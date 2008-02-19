@@ -179,7 +179,7 @@ sub new {
             $opts{flag_op} = '= ?';
             @flag_val = ($opts{unprocessed});
         } else {
-            @flag_val = grep { exists $opts{$_} ? $opts{$_} : () } qw(processed working failed);
+            @flag_val = map { exists $opts{$_} ? $opts{$_} : () } qw(processed working failed);
             if (@flag_val == 1) {
                 $opts{flag_op} = '!= ?';
             } else {
@@ -219,19 +219,25 @@ sub new {
     if (!$opts{release_sql}) {
         $opts{release_sql} = do {
 	    local $_ = '
-		SELECT RELEASE_LOCK( CONCAT_WS("=", ?, ? ) ) 
+		SELECT RELEASE_LOCK( CONCAT_WS("=", ?, ? ) )
 	    ';
 	    s/^\s+//mg;
 	    s/\$(\w+)/$opts{$1} || confess "Option $1 is mandatory"/ge;
 	    $_;
 	};
-        $opts{release_args} = [$opts{lock_prefix}];
+        $opts{release_args} = [ $opts{lock_prefix} ];
     }
-    %$self=%opts;
+    %$self = %opts;
+
     #use Data::Dumper;
     #$Data::Dumper::Sortkeys=1;
-    #warn Dumper($self);
-    return $self
+    #if ($Data::Consumer::Debug) {
+    #    foreach my $pfx (qw(select update release)) {
+    #        warn "$pfx\n$opts{$pfx.'_sql'}\n";
+    #        warn "[@{$opts{$pfx.'_args'}}]\n" if $opts{$pfx.'_args'};
+    #    }
+    #}
+    return $self;
 }
 
 

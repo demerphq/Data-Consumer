@@ -1,0 +1,13 @@
+Changes
+MANIFEST
+Makefile.PL
+README
+lib/Data/Consumer.pm
+lib/Data/Consumer/Mysql.pm
+t/00-load.t
+t/01-mysql.t
+t/02-mysql.t
+t/04-mysql.t
+t/05-mysql.t
+t/pod-coverage.t
+t/pod.t

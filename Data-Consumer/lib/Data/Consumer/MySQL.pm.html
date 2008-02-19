@@ -1,0 +1,279 @@
+<?xml version="1.0" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title>Data::Consumer::MySQL - Data::Consumer implementation for a mysql database table resource</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<link rev="made" href="mailto:root@localhost" />
+</head>
+
+<body style="background-color: white">
+
+<p><a name="__index__"></a></p>
+<!-- INDEX BEGIN -->
+
+<ul>
+
+	<li><a href="#name">NAME</a></li>
+	<li><a href="#version">VERSION</a></li>
+	<li><a href="#synopsis">SYNOPSIS</a></li>
+	<li><a href="#functions">FUNCTIONS</a></li>
+	<ul>
+
+		<li><a href="#class_new__opts_">CLASS-&gt;<code>new(%opts)</code></a></li>
+		<li><a href="#_object_reset__">$object-&gt;<code>reset()</code></a></li>
+		<li><a href="#_object_acquire__">$object-&gt;<code>acquire()</code></a></li>
+		<li><a href="#_object_release__">$object-&gt;<code>release()</code></a></li>
+		<li><a href="#_object_dbh__">$object-&gt;<code>dbh()</code></a></li>
+	</ul>
+
+	<li><a href="#author">AUTHOR</a></li>
+	<li><a href="#bugs">BUGS</a></li>
+	<li><a href="#acknowledgements">ACKNOWLEDGEMENTS</a></li>
+	<li><a href="#copyright___license">COPYRIGHT &amp; LICENSE</a></li>
+</ul>
+<!-- INDEX END -->
+
+<hr />
+<p>
+</p>
+<h1><a name="name">NAME</a></h1>
+<p>Data::Consumer::MySQL - Data::Consumer implementation for a mysql database table resource</p>
+<p>
+</p>
+<hr />
+<h1><a name="version">VERSION</a></h1>
+<p>Version 0.09</p>
+<p>
+</p>
+<hr />
+<h1><a name="synopsis">SYNOPSIS</a></h1>
+<pre>
+    use Data::Consumer::MySQL;</pre>
+<pre>
+    my $consumer = Data::Consumer::MySQL-&gt;new(
+        dbh =&gt; $dbh,
+        table =&gt; 'T',
+        id_field= &gt; 'id',
+        flag_field =&gt; 'done',
+        unprocessed =&gt; 0,
+        working =&gt; 1,
+        processed =&gt; 2,
+        failed =&gt; 3,
+    );</pre>
+<pre>
+    $consumer-&gt;consume( sub {
+        my $id = shift;
+        print &quot;processed $id\n&quot;;
+    } );</pre>
+<p>
+</p>
+<hr />
+<h1><a name="functions">FUNCTIONS</a></h1>
+<p>
+</p>
+<h2><a name="class_new__opts_">CLASS-&gt;<code>new(%opts)</code></a></h2>
+<p>Constructor for a <a href="/Data/Consumer/MySQL.html">the Data::Consumer::MySQL manpage</a> instance.</p>
+<p>Options are as follows:</p>
+<dl>
+<dt><strong><a name="item_connect__3d_3e__5c_40connect_args">connect =&gt; \@connect_args</a></strong>
+
+<dd>
+<p>Will use <code>@connect_args</code> to connect to the database using
+<code>DBI-</code>connect()&gt;.  This argument is mandatory if the <code>dbh</code> argument is
+not provided.</p>
+</dd>
+</li>
+<dt><strong><a name="item_dbh__3d_3e__24dbh">dbh =&gt; $dbh</a></strong>
+
+<dd>
+<p>Use <code>$dbh</code> as the database connection object. If this argument is
+provided then connect will be ignored.</p>
+</dd>
+</li>
+<dt><strong><a name="item_table__3d_3e__27some_table_name_27">table =&gt; 'some_table_name'</a></strong>
+
+<dd>
+<p>Process records in the specified table.</p>
+</dd>
+</li>
+<dt><strong><a name="item_id_field__3d_3e__27id_27">id_field =&gt; 'id'</a></strong>
+
+<dd>
+<p>The column name of the primary key of the table being processed</p>
+</dd>
+</li>
+<dt><strong><a name="item_flag_field__3d_3e__27process_state_27">flag_field =&gt; 'process_state'</a></strong>
+
+<dd>
+<p>The column name in the table being processed which shows whether
+an object is processed or not.</p>
+</dd>
+</li>
+<dt><strong><a name="item_lock_prefix__3d_3e__27my_2dlock_2dname_27">lock_prefix =&gt; 'my-lock-name'</a></strong>
+
+<dd>
+<p>The prefix to use for the mysql locks. Defaults to <code>$0-$table</code>.</p>
+</dd>
+</li>
+<dt><strong><a name="item_unprocessed__3d_3e_0">unprocessed =&gt; 0</a></strong>
+
+<dd>
+<p>The value of the <code>flag_field</code> which indicates that an item is not
+processed. If not provided defaults to <code>0</code>.</p>
+</dd>
+<dd>
+<p>Optional.</p>
+</dd>
+<dd>
+<p>May also be a callback which is responsible for marking the item as
+unprocessed.  This will be called with the arguments <code>($consumer,
+'unprocessed', $id, $dbh)</code></p>
+</dd>
+</li>
+<dt><strong><a name="item_working__3d_3e_1">working =&gt; 1</a></strong>
+
+<dd>
+<p>The value of the <code>flag_field</code> which indicates that an item is currently
+being processed. If not provided defaults to <code>1</code>.</p>
+</dd>
+<dd>
+<p>Optional.</p>
+</dd>
+<dd>
+<p>May also be a callback which is responsible for marking the item as
+working.  This will be called with the arguments <code>($consumer,
+'working', $id, $dfh)</code>.</p>
+</dd>
+</li>
+<dt><strong><a name="item_processed__3d_3e_2">processed =&gt; 2</a></strong>
+
+<dd>
+<p>The value of the <code>flag_field</code> which indicates that an item has been
+successfully processed. If not provided defaults to <code>2</code>.</p>
+</dd>
+<dd>
+<p>Optional.</p>
+</dd>
+<dd>
+<p>May also be a callback which is responsible for marking the item as processed.
+This will be called with the arguments ($consumer,'processed',$id,$dfh)</p>
+</dd>
+</li>
+<dt><strong><a name="item_failed__3d_3e_3">failed =&gt; 3</a></strong>
+
+<dd>
+<p>The value of the <code>flag_field</code> which indicates that processing of an
+item has failed. If not provided defaults to <code>3</code>.</p>
+</dd>
+<dd>
+<p>Optional.</p>
+</dd>
+<dd>
+<p>May also be a callback which is responsible for marking the item as
+failed.  This will be called with the arguments <code>($consumer, 'failed',
+$id, $dfh)</code></p>
+</dd>
+</li>
+<dt><strong><a name="item_init_id__3d_3e_0">init_id =&gt; 0</a></strong>
+
+<dd>
+<p>The value which the first acquired record's <code>id_field</code> must be greater
+than. Should be smaller than any legal id in the table. Defaults to <code>0</code>.</p>
+</dd>
+</li>
+<dt><strong><a name="item_select_sql">select_sql</a></strong>
+
+<dt><strong><a name="item_select_args">select_args</a></strong>
+
+<dd>
+<p>These arguments are optional, and will be synthesized from the other values if not provided.</p>
+</dd>
+<dd>
+<p>SQL select query which can be executed to acquire an item to be processed. Should
+return a single record with a single column contain the id to be processed, at the
+same time it should ensure that a lock on the id is created.</p>
+</dd>
+<dd>
+<p>The query will be executed with the arguments contained in select_args array, followed
+by the id of the last processed item.</p>
+</dd>
+</li>
+<dt><strong><a name="item_update_sql">update_sql</a></strong>
+
+<dt><strong><a name="item_update_args">update_args</a></strong>
+
+<dd>
+<p>These arguments are optional, and will be synthesized from the other values if not provided.</p>
+</dd>
+<dd>
+<p>SQL update query which can be used to change the status the record being processed.</p>
+</dd>
+<dd>
+<p>Will be executed with the arguments provided in update_args followed the new status,
+and the id.</p>
+</dd>
+</li>
+<dt><strong><a name="item_release_sql">release_sql</a></strong>
+
+<dt><strong><a name="item_release_args">release_args</a></strong>
+
+<dd>
+<p>These arguments are optional, and will be synthesized from the other values if not provided.</p>
+</dd>
+<dd>
+<p>SQL select query which can be used to clear the currently held lock.</p>
+</dd>
+<dd>
+<p>Will be called with the arguments provided in release_args, plust the id.</p>
+</dd>
+</li>
+</dl>
+<p>
+</p>
+<h2><a name="_object_reset__">$object-&gt;<code>reset()</code></a></h2>
+<p>Reset the state of the object.</p>
+<p>
+</p>
+<h2><a name="_object_acquire__">$object-&gt;<code>acquire()</code></a></h2>
+<p>Aquire an item to be processed.</p>
+<p>Returns an identifier to be used to identify the item acquired.</p>
+<p>
+</p>
+<h2><a name="_object_release__">$object-&gt;<code>release()</code></a></h2>
+<p>Release any locks on the currently held item.</p>
+<p>Normally there is no need to call this directly.</p>
+<p>
+</p>
+<h2><a name="_object_dbh__">$object-&gt;<code>dbh()</code></a></h2>
+<p>returns the database handle the object is using to communicate to the db with.</p>
+<p>
+</p>
+<hr />
+<h1><a name="author">AUTHOR</a></h1>
+<p>Yves Orton, <code>&lt;YVES at cpan.org&gt;</code></p>
+<p>
+</p>
+<hr />
+<h1><a name="bugs">BUGS</a></h1>
+<p>Please report any bugs or feature requests to
+<code>bug-data-consumer at rt.cpan.org</code>, or through the web interface at
+<a href="http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Data-Consumer">http://rt.cpan.org/NoAuth/ReportBug.html</a>.</p>
+<p>I will be notified, and then you'll automatically be notified of progress on
+your bug as I make changes.</p>
+<p>
+</p>
+<hr />
+<h1><a name="acknowledgements">ACKNOWLEDGEMENTS</a></h1>
+<p>Igor Sutton &lt;<a href="mailto:IZUT@cpan.org">IZUT@cpan.org</a>&gt; for ideas, testing and support.</p>
+<p>
+</p>
+<hr />
+<h1><a name="copyright___license">COPYRIGHT &amp; LICENSE</a></h1>
+<p>Copyright 2008 Yves Orton, all rights reserved.</p>
+<p>This program is free software; you can redistribute it and/or modify it
+under the same terms as Perl itself.</p>
+
+</body>
+
+</html>

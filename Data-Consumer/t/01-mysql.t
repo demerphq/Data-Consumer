@@ -1,48 +1,79 @@
 #!perl -T
-
-use Test::More tests => 2;
-
-BEGIN {
-	use_ok( 'Data::Consumer::Mysql' );
-}
+use Data::Consumer::Mysql;
 use strict;
 use warnings;
+use DBI;
+
+my $table = 'TEMP_DATA_CONSUMER_TEST_TABLE';
+
+my $drop = <<"ENDOFSQL";
+DROP TABLE `$table`
+ENDOFSQL
+
+my $create = <<"ENDOFSQL";
+CREATE TABLE `$table` ( 
+    `id` int(11) NOT NULL auto_increment, 
+    `n` int(11) NOT NULL default '0', 
+    `done` tinyint(3) unsigned NOT NULL default '0', 
+    PRIMARY KEY  (`id`) 
+)
+ENDOFSQL
+
+# 100 rows
+my $insert = <<"ENDOFSQL";
+INSERT INTO `$table` (done) VALUES 
+	(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),
+        (0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),
+        (0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),
+        (0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),
+        (0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),
+        (0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),
+        (0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),
+        (0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),
+        (0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),
+        (0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0)
+ENDOFSQL
+
+my @connect = ("DBI:mysql:dev", 'test', 'test');
+
+INIT:{
+    my $dbh = DBI->connect(@connect) 
+	or die "Could not connect to database: $DBI::errstr";
+    local $dbh->{PrintError};
+    local $dbh->{PrintWarn};
+    local $dbh->{RaiseError} = 0;
+    $dbh->do($drop);
+    $dbh->{RaiseError} = 1;
+    $dbh->do($create);
+    $dbh->do($insert);
+        
+}
+my $debug=0;
+
 my $child;
-my $procs=4;
-warn "$$ Spawning children!\n";
+my $procs = 4;
+$debug  and warn "$$ Spawning children!\n";
 my $pid=$$;
 do {
     $child = fork;
     die "Fork failed!" if !defined $child;
-    warn "$$: Spawned child process $child\n" if $child;
+    $debug  and warn "$$: Spawned child process $child\n" if $child;
 } while $child and --$procs > 0;
 
-warn "$$: starting processing\n";
-#exit;
-my $dbh = DBI->connect(
-    'DBI:mysql:dev', 'test', 'test'
-) || die "Could not connect to database: $DBI::errstr";
-my $count=0;
-my $num=0;
-while ( !$num and $count++ < 2 ) {
-    my $lock;
-    ($num, $lock)= $dbh->selectrow_array('select count(*),GET_LOCK(?,0) from T where done=0',undef,$0);
-    if (!$num and $lock) {
-	$dbh->do('insert into T (done) values 
-	(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),
-	(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),
-	(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),
-	(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),
-	(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0)
-	');
-    } elsif (!$num) {
-        sleep(2);
-    }
+if ( $child ) {
+    $debug  and warn("### Using test more $$\n");
+    eval 'use Test::More tests => 2; ok(1); 1;' 
+        or die $@;
+} else {
+   sleep(1);
 }
-    
+
+$child and warn "\nThis will take around 30 seconds\n";
+$debug and warn "$$: starting processing\n";
+$Data::Consumer::Debug=5 if $debug;
 my $consumer = Data::Consumer::Mysql->new(
-    dbh => $dbh,
-    table => 'T', 
+    connect => \@connect,
+    table => $table, 
     flag_field => 'done', 
     unprocessed => 0, 
     working => 1,
@@ -51,13 +82,21 @@ my $consumer = Data::Consumer::Mysql->new(
 );
 
 $consumer->consume(sub { 
-    my $id = shift; 
-    warn("$$: Processing $id"); 
-    sleep(1+rand(2));
-    $dbh->do('update T set n=n+1 where id=?',undef,$id);
+    my ($id,$consumer) = @_; 
+    $debug  and warn("$$: Processing $id"); 
+    sleep(1);
+    $consumer->dbh->do("UPDATE `$table` SET `n` = `n` + 1 WHERE `id` = ?",undef,$id);
 });
-if (!$child){
-    ($num)= $dbh->selectrow_array('select count(*) from T where n>1');
-    is($num,0);
+
+
+if ( $child ) {
+    sleep(1);
+    my $recs = $consumer->dbh->selectall_arrayref("SELECT * FROM `$table` WHERE `n` != 1");
+    use Data::Dumper;    
+    my $num = 0 + @$recs;
+    is($num,0) or warn Dumper($recs);
+    $debug  and warn("### $$ Found $num multiple processed items.\n");
+} else {
+    undef $consumer;
 }
-print("### Found $num multiple processed items.");
+

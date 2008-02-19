@@ -7,6 +7,10 @@ use Carp qw(confess);
 use warnings FATAL => 'all';
 use base 'Data::Consumer';
 
+BEGIN {
+    __PACKAGE__->register();
+}
+
 =head1 NAME
 
 Data::Consumer - The great new Data::Consumer!
@@ -48,9 +52,9 @@ sub new {
     my ($class, %opts)=@_;
     my $self = $class->SUPER::new(); # let Data::Consumer bless the hash
     
-    if (!$opts{dbh} and $opts{db_connect}) {
-        $opts{dbh} = DBI->connect( @{$self->{connect}} ) 
-            or confess "Could not connect to database: $DBI::errstr\n";
+    if (!$opts{dbh} and $opts{connect}) {
+        $opts{dbh} = DBI->connect( @{$opts{connect}} ) 
+            or confess "Could not connect to database '$opts{connect}[0]' as '$opts{user}[1]': $DBI::errstr\n";
     }
     $opts{dbh} 
         or confess "Must have a database handle!";
@@ -105,8 +109,31 @@ sub new {
     return $self
 }
 
+
+
+=head2  $object->reset()
+
+Reset the state of the object.
+
+=head2 $object->acquire()
+
+Aquire an item to be processed. 
+
+returns an identifier to be used to identify the item acquired.
+
+=head2 $object->release()
+
+Release any locks on the currently held item.
+
+Normally there is no need to call this directly. 
+
+=cut
+
+
 sub reset { 
     my $self = shift;
+    $self->debug_warn(5,"reset");
+    $self->release();
     $self->{last_id} = $self->{init_id};
     return $self;
 }
@@ -120,46 +147,16 @@ sub acquire {
 
     my ($id) = $dbh->selectrow_array($self->{select_sql}, undef, 
         $self->{unprocessed}, $self->{lock_prefix}, $self->{last_id});
-
-    $self->{last_lock} = $id if defined $id;
+    if (defined $id) {
+        $self->{last_lock} = $id;
+        $self->debug_warn(5,"acquired '$id'");
+    } else {
+        $self->debug_warn(5,"acquire failed -- resource has been exhausted");
+    }
+    
     $self->{last_id} = $id;
 
     return $id;
-}
-
-sub last_id {
-    my $self=shift;
-    return $self->{last_id};
-}
-
-sub _update {
-    my ($self, $key,$id)=@_;
-    $id = $self->last_id if @_<3;
-    defined $id 
-        or confess "Undefined last_id. Nothing acquired yet?";
-    if ($self->{$key}) {
-        my $res = $self->{dbh}->do($self->{update_sql},undef,$self->{$key},$id)
-            or $self->error("Failed to execute '$self->{update_sql}' with args '$self->{$key}','$id': " . 
-                    $self->{dbh}->errstr());
-        0+$res or $self->error("Update resulted in 0 records changing!");
-    }
-}
-
-sub process {
-    my $self = shift;
-    my $callback = shift;
-    my $id = $self->last_id;
-    defined $id 
-        or $self->error("Undefined last_id. Nothing acquired yet?");
-    $self->_update('working');
-    if ( eval { $callback->($id);  1; } ) {
-        $self->_update('processed');
-    } else {
-        my $error = "Processing failed: $@";
-        $self->_update('failed');
-        $self->error($error);
-    }
-    return 1;
 }
 
 sub release {
@@ -171,23 +168,37 @@ sub release {
     defined $res or 
         $self->error("Failed to execute '$self->{release_sql}' with args '$self->{last_lock}': " . $self->{dbh}->errstr());
 
-    warn "$$: release lock '$self->{last_lock}' status: $res\n"; # XXX
+    $self->debug_warn(5,"release lock '$self->{last_lock}' status: $res"); # XXX
     delete $self->{last_lock};
     return 1;
 }
 
+sub _mark_as {
+    my ($self, $key,$id)=@_;
+
+    if ($self->{$key}) {
+        $self->debug_warn(5,"marking '$id' as '$key'");
+        my $res = $self->{dbh}->do($self->{update_sql},undef,$self->{$key},$id)
+            or $self->error("Failed to execute '$self->{update_sql}' with args '$self->{$key}','$id': " . 
+                    $self->{dbh}->errstr());
+        0+$res or $self->error("Update resulted in 0 records changing!");
+        
+    }
+}
+
+=head2 $object->dbh
+
+returns the database handle the object is using to communicate to the db with.
+
+=cut
+
+sub dbh { $_[0]->{dbh} }
 
 sub DESTROY {
     my $self = shift;
     $self->release() if $self
 }
 
-#sub _check { confess "abstract method must be overriden by subclass\n"; }
-#sub error { confess "abstract method must be overriden by subclass\n"; }
-
-
-
-=head2 function2
 
 =head1 AUTHOR
 
@@ -200,38 +211,6 @@ the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Data-Consu
 automatically be notified of progress on your bug as I make changes.
 
 
-
-
-=head1 SUPPORT
-
-You can find documentation for this module with the perldoc command.
-
-    perldoc Data::Consumer
-
-
-You can also look for information at:
-
-=over 4
-
-=item * RT: CPAN's request tracker
-
-L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=Data-Consumer>
-
-=item * AnnoCPAN: Annotated CPAN documentation
-
-L<http://annocpan.org/dist/Data-Consumer>
-
-=item * CPAN Ratings
-
-L<http://cpanratings.perl.org/d/Data-Consumer>
-
-=item * Search CPAN
-
-L<http://search.cpan.org/dist/Data-Consumer>
-
-=back
-
-
 =head1 ACKNOWLEDGEMENTS
 
 
@@ -242,7 +221,6 @@ Copyright 2008 Yves Orton, all rights reserved.
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.
 
-
 =cut
 
-1; # End of Data::Consumer
+1; # End of Data::Consumer::Mysql

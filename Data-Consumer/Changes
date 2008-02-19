@@ -1,5 +1,8 @@
 Revision history for Data-Consumer
 
-0.01    Date/time
-        First version, released on an unsuspecting world.
+0.01    2008-02-10
+        Initial creation. Support Mysql and File based data resources.
+
+
+
 

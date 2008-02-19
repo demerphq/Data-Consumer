@@ -90,10 +90,7 @@ any false value) then there is no time limit.
 =item proceed => $code_ref
 
 This is a callback that may be used to control the looping process in consume
-via the proceed() method. It is passed a reference to a hash of statistics as 
-documented in runstats(). If it returns false then processing will terminate,
-if it returns true then processing will proceed provided none of the other
-process restrictions have been violated.
+via the proceed() method. See the documentation of consume() and proceed()
 
 =back
 
@@ -297,11 +294,6 @@ sub reset   { confess "abstract method must be overriden by subclass\n"; }
 sub acquire { confess "abstract method must be overriden by subclass\n"; }
 sub release { confess "abstract method must be overriden by subclass\n"; }
 
-
-=head2 _check
-
-Calls the 'check' callback if the user has provided one.
-
 =head2 error
 
 Calls the 'error' callback if the user has provided one, otherwise calls 
@@ -309,13 +301,6 @@ confess().
 
 =cut
 
-
-sub _check   { 
-    my ($self,$passes,$updated,$failed,$updated_this_pass,$failed_this_pass)=@_;
-    if ($self->{check}) {
-        $self->{check}->($passes,$updated,$failed,$updated_this_pass,$failed_this_pass);
-    }
-}
 
 sub error   { 
     my $self=shift;
@@ -336,25 +321,28 @@ the main method used by external processes.
 
 Before each attempt to acquire a new resource, and once at the end of
 each pass consume will call proceed() to determine if it can do so. The
-user may hook into this by specifying a callback in the constructor.
+user may hook into this by specifying a callback in the constructor. This
+callback will be executed with no args when it is in the inner loop (per
+item), and with the number of passes at the end of each pass (starting with 1).
 
-=head2 $object->proceed
+=head2 $object->proceed($passes)
 
 Returns true if the conditions specified at construction time are
 satisfied and processing may proceed. Returns false otherwise. 
 
 If the user has specified a 'proceed' callback in the constructor then
 this will be executed before any other rules are applied, with a reference
-to the current runstats as an argument. If this callback returns true then
-the other rules will be applied, and only after all are satisfied will it
-return true.
+to the current $object, a reference to the runstats, and if being called at 
+the end of pass with the number of passes. 
 
-This most likely should not be called by an end user.
+If this callback returns true then the other rules will be applied, and 
+only if all other conditions from the constructort are satisfied will proceed()
+itself return true.
 
 =head2 $object->runstats
 
-Returns a reference to a hash of statistics about the last use
-of consume. 
+Returns a reference to a hash of statistics about the last (or currently running) 
+execution of consume. 
 
 =cut
 
@@ -362,13 +350,13 @@ sub runstats { $_[0]->{runstats} }
 
 sub proceed {
     my $self = shift;
-    my $is_end_of_pass = shift;
     my $runstats = $self->{runstats};
     $runstats->{end_time} = time;
     $runstats->{elapsed} = $runstats->{end_time} - $runstats->{start_time};
     
     if (my $cb = $self->{proceed}) {
-        return unless $cb->($self,$self->{runstats});
+        $cb->($self,$self->{runstats},@_) # pass on the $passes argument if its there 
+            or return; 
     }
     for $key ( qw(elapsed passes processed failed) ) {
         my $max = "max_$key";
@@ -387,7 +375,7 @@ sub consume {
     my %runstats;
     $self->{runstats}=\%runstats;
     
-    $runstats{start} = time;
+    $runstats{start_time} = time;
     $runstats{$_} = 0 
         for qw(passes updated failed updated_this_pass failed_this_pass);
  
@@ -408,11 +396,12 @@ sub consume {
                 # quotes force string copy
                 $self->error("Failed during callback handling: $@"); 
             };
-            
         } 
-    } while $self->proceed && $runstats{updated_this_pass};
-    $self->release(); # if we still hold a lock let it go.
-    
+    } while $self->proceed($runstas{passes}) 
+         && $runstats{updated_this_pass};
+
+    # if we still hold a lock let it go.
+    $self->release; 
     return \%runstats;
 }
 

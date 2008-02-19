@@ -13,7 +13,7 @@ BEGIN {
 
 =head1 NAME
 
-Data::Consumer - The great new Data::Consumer!
+Data::Consumer::Mysql - Data::Consumer implementation for a mysql database table resource
 
 =head1 VERSION
 
@@ -26,25 +26,126 @@ our $VERSION = '0.01';
 
 =head1 SYNOPSIS
 
-Quick summary of what the module does.
+    use Data::Consumer::Mysql;
+    my $consumer = Data::Consumer::Mysql->new(
+	dbh => $dbh,
+	table => 'T', 
+        id_field= > 'id',
+	flag_field => 'done', 
+	unprocessed => 0, 
+	working => 1,
+	processed => 2,
+	failed => 3,
+    );
+    $consumer->consume(sub {
+        my $id = shift;
+        print "processed $id\n";
+    });
 
-Perhaps a little code snippet.
-
-    use Data::Consumer;
-
-    my $foo = Data::Consumer->new();
-    ...
-
-=head1 EXPORT
-
-A list of functions that can be exported.  You can delete this section
-if you don't export anything, such as for a purely object-oriented module.
 
 =head1 FUNCTIONS
 
 =head2 new
 
-Must be overriden
+Constructor for a Data::Consumer::Mysql instance.
+
+Options are as follows:
+
+=over 4 
+
+=item connect => \@connect_args
+
+Will use @connect_args to connect to the database using DBI->connect().
+This argument is mandatory if the dbh argument is not provided.
+
+=item dbh => $dbh
+
+Use $dbh as the database connection object. If this argument is provided
+then connect will be ignored.
+
+=item table => 'some_table_name'
+
+Process records in the specified table.
+
+=item id_field => 'id'
+
+The column name of the primary key of the table being processed
+
+=item flag_field => 'process_state'
+
+The column name in the table being processed which shows whether
+an object is processed or not.
+
+=item lock_prefix => 'my-lock-name'
+
+The prefix to use for the mysql locks. Defaults to "$0-$table"
+
+=item unprocessed => 0
+
+The value of the flag_field which indicates that an item is not processed.
+
+Optional.
+
+=item working => 1
+
+The value of the flag_field which indicates that an item is currently being
+processed.
+
+Optional.
+
+=item processed => 2
+
+The value of the flag_field which indicates that an item has been successfully 
+processed. If not provided defaults to 1.
+
+Optional.
+
+=item failed => 3
+
+The value of the flag_field which indicates that processing of an item has failed.
+
+Optional.
+
+=item init_id => 0
+
+The value which the first acquired record's id_field must be greater than. 
+Should be smaller than any legal id in the table.  Defaults to 0.
+
+=item select_sql
+
+=item select_args
+
+These arguments are optional, and will be synthesized from the other values if not provided.
+
+SQL select query which can be executed to acquire an item to be processed. Should
+return a single record with a single column contain the id to be processed, at the
+same time it should ensure that a lock on the id is created.
+
+The query will be executed with the arguments contained in select_args array, followed
+by the id of the last processed item. 
+
+=item update_sql
+
+=item update_args
+
+These arguments are optional, and will be synthesized from the other values if not provided.
+
+SQL update query which can be used to change the status the record being processed.
+
+Will be executed with the arguments provided in update_args followed the new status, 
+and the id.
+
+=item release_sql
+
+=item release_args
+
+These arguments are optional, and will be synthesized from the other values if not provided.
+
+SQL select query which can be used to clear the currently held lock. 
+
+Will be called with the arguments provided in release_args, plust the id.
+
+=back
 
 =cut
 
@@ -65,25 +166,44 @@ sub new {
 
     $opts{id_field}   ||= 'id';
     $opts{flag_field} ||= 'process_state';
-    $opts{unprocessed} =0 unless defined $opts{unprocessed};
-    $opts{init_id}    = 0 unless defined $opts{init_id};
-    $opts{lock_prefix} ||= $0;
+    $opts{init_id}    = 0 unless exists $opts{init_id};
+    $opts{lock_prefix} ||= join "-",$0,($opts{table}||());
+
+    $opts{processed} = 1 
+        unless exists $opts{processed};
     
-    $opts{select_sql} ||= do {
-        local $_ = '
-	    SELECT 
-            $id_field
-            FROM $table 
-	    WHERE
-	    $flag_field = ?
-	    AND GET_LOCK( CONCAT_WS("=", ?, $id_field ), 0) != 0 
-            AND $id_field > ?
-	    LIMIT 1
-        ';
-        s/^\s+//mg;
-        s/\$(\w+)/$opts{$1} || confess "Option $1 is mandatory"/ge;
-        $_;
-    };
+    if (!$opts{select_sql}) {
+        my $flag_op;
+        my @flag_val;
+        if (exists $opts{unprocessed}) {
+            $opts{flag_op} = '= ?';
+            @flag_val = ($opts{unprocessed});
+        } else {
+            @flag_val = grep { exists $opts{$_} ? $opts{$_} : () } qw(processed working failed);
+            if (@flag_val == 1) {
+                $opts{flag_op} = '!= ?';
+            } else {
+                $opts{flag_op} = 'not in ('.join(', ',('?') x @flag_val).')';
+            }
+        }
+        
+        $opts{select_sql} = do{
+	    local $_ = '
+		SELECT 
+		$id_field
+		FROM $table 
+		WHERE
+		$flag_field $flag_op
+		AND GET_LOCK( CONCAT_WS("=", ?, $id_field ), 0) != 0 
+		AND $id_field > ?
+		LIMIT 1
+	    ';
+	    s/^\s+//mg;
+	    s/\$(\w+)/$opts{$1} || confess "Option $1 is mandatory"/ge;
+	    $_;
+        };
+        $opts{select_args}=[@flag_val,$opts{lock_prefix}];
+    }
 
     $opts{update_sql} ||= do {
         local $_ = '
@@ -96,16 +216,21 @@ sub new {
         s/\$(\w+)/$opts{$1} || confess "Option $1 is mandatory"/ge;
         $_;
     };
-    $opts{release_sql} ||= do {
-        local $_ = '
-            SELECT RELEASE_LOCK( CONCAT_WS("=", ?, ? ) ) 
-        ';
-        s/^\s+//mg;
-        s/\$(\w+)/$opts{$1} || confess "Option $1 is mandatory"/ge;
-        $_;
-    };
-
+    if (!$opts{release_sql}) {
+        $opts{release_sql} = do {
+	    local $_ = '
+		SELECT RELEASE_LOCK( CONCAT_WS("=", ?, ? ) ) 
+	    ';
+	    s/^\s+//mg;
+	    s/\$(\w+)/$opts{$1} || confess "Option $1 is mandatory"/ge;
+	    $_;
+	};
+        $opts{release_args} = [$opts{lock_prefix}];
+    }
     %$self=%opts;
+    #use Data::Dumper;
+    #$Data::Dumper::Sortkeys=1;
+    #warn Dumper($self);
     return $self
 }
 
@@ -146,7 +271,7 @@ sub acquire {
     $self->reset if !defined $self->{last_id};
 
     my ($id) = $dbh->selectrow_array($self->{select_sql}, undef, 
-        $self->{unprocessed}, $self->{lock_prefix}, $self->{last_id});
+        @{$self->{select_args}||[]}, $self->{last_id});
     if (defined $id) {
         $self->{last_lock} = $id;
         $self->debug_warn(5,"acquired '$id'");
@@ -164,7 +289,7 @@ sub release {
     
     return 0 unless exists $self->{last_lock};
 
-    my $res = $self->{dbh}->do($self->{release_sql},undef,$self->{lock_prefix},$self->{last_lock});
+    my $res = $self->{dbh}->do($self->{release_sql},undef,@{$self->{release_args}||[]},$self->{last_lock});
     defined $res or 
         $self->error("Failed to execute '$self->{release_sql}' with args '$self->{last_lock}': " . $self->{dbh}->errstr());
 
@@ -178,7 +303,7 @@ sub _mark_as {
 
     if ($self->{$key}) {
         $self->debug_warn(5,"marking '$id' as '$key'");
-        my $res = $self->{dbh}->do($self->{update_sql},undef,$self->{$key},$id)
+        my $res = $self->{dbh}->do($self->{update_sql},undef,@{$self->{update_args}||[]},$self->{$key},$id)
             or $self->error("Failed to execute '$self->{update_sql}' with args '$self->{$key}','$id': " . 
                     $self->{dbh}->errstr());
         0+$res or $self->error("Update resulted in 0 records changing!");

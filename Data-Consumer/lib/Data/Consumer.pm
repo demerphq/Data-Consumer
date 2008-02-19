@@ -18,7 +18,7 @@ Version 0.01
 =cut
 
 $VERSION = '0.01';
-$Debug = 1;
+#$Debug = 1;
 
 =head1 SYNOPSIS
 

@@ -91,7 +91,7 @@ $consumer->consume(sub {
 
 if ( $child ) {
     sleep(1);
-    my $recs = $consumer->dbh->selectall_arrayref("SELECT * FROM `$table` WHERE `n` != 1");
+    my $recs = $consumer->dbh->selectall_arrayref("SELECT * FROM `$table` WHERE NOT(`n` = ? AND `done` = ?)",undef,1,2);
     use Data::Dumper;    
     my $num = 0 + @$recs;
     is($num,0) or warn Dumper($recs);

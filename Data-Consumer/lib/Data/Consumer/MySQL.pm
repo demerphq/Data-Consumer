@@ -35,6 +35,7 @@ $VERSION= '0.08';
 =head1 SYNOPSIS
 
     use Data::Consumer::MySQL;
+
     my $consumer = Data::Consumer::MySQL->new(
         dbh => $dbh,
         table => 'T',
@@ -45,17 +46,18 @@ $VERSION= '0.08';
         processed => 2,
         failed => 3,
     );
-    $consumer->consume(sub {
+
+    $consumer->consume( sub {
         my $id = shift;
         print "processed $id\n";
-    });
+    } );
 
 
 =head1 FUNCTIONS
 
 =head2 CLASS->new(%opts)
 
-Constructor for a Data::Consumer::MySQL instance.
+Constructor for a L<Data::Consumer::MySQL> instance.
 
 Options are as follows:
 
@@ -63,13 +65,14 @@ Options are as follows:
 
 =item connect => \@connect_args
 
-Will use @connect_args to connect to the database using DBI->connect().
-This argument is mandatory if the dbh argument is not provided.
+Will use C<@connect_args> to connect to the database using
+C<DBI->connect()>.  This argument is mandatory if the C<dbh> argument is
+not provided.
 
 =item dbh => $dbh
 
-Use $dbh as the database connection object. If this argument is provided
-then connect will be ignored.
+Use C<$dbh> as the database connection object. If this argument is
+provided then connect will be ignored.
 
 =item table => 'some_table_name'
 
@@ -86,33 +89,35 @@ an object is processed or not.
 
 =item lock_prefix => 'my-lock-name'
 
-The prefix to use for the mysql locks. Defaults to "$0-$table"
+The prefix to use for the mysql locks. Defaults to C<$0-$table>.
 
 =item unprocessed => 0
 
-The value of the flag_field which indicates that an item is not processed.
+The value of the C<flag_field> which indicates that an item is not
+processed. If not provided defaults to C<0>.
 
 Optional.
 
-May also be a callback which is responsible for marking the item as unprocessed.
-This will be called with the arguments ($consumer,'unprocessed',$id,$dfh)
-
+May also be a callback which is responsible for marking the item as
+unprocessed.  This will be called with the arguments C<($consumer,
+'unprocessed', $id, $dbh)>
 
 =item working => 1
 
-The value of the flag_field which indicates that an item is currently being
-processed.
+The value of the C<flag_field> which indicates that an item is currently
+being processed. If not provided defaults to C<1>.
 
 Optional.
 
-May also be a callback which is responsible for marking the item as working.
-This will be called with the arguments ($consumer,'working',$id,$dfh)
+May also be a callback which is responsible for marking the item as
+working.  This will be called with the arguments C<($consumer,
+'working', $id, $dfh)>.
 
 
 =item processed => 2
 
-The value of the flag_field which indicates that an item has been successfully
-processed. If not provided defaults to 1.
+The value of the C<flag_field> which indicates that an item has been
+successfully processed. If not provided defaults to C<2>.
 
 Optional.
 
@@ -121,17 +126,19 @@ This will be called with the arguments ($consumer,'processed',$id,$dfh)
 
 =item failed => 3
 
-The value of the flag_field which indicates that processing of an item has failed.
+The value of the C<flag_field> which indicates that processing of an
+item has failed. If not provided defaults to C<3>.
 
 Optional.
 
-May also be a callback which is responsible for marking the item as failed.
-This will be called with the arguments ($consumer,'failed',$id,$dfh)
+May also be a callback which is responsible for marking the item as
+failed.  This will be called with the arguments C<($consumer, 'failed',
+$id, $dfh)>
 
 =item init_id => 0
 
-The value which the first acquired record's id_field must be greater than.
-Should be smaller than any legal id in the table.  Defaults to 0.
+The value which the first acquired record's C<id_field> must be greater
+than. Should be smaller than any legal id in the table. Defaults to C<0>.
 
 =item select_sql
 
@@ -271,7 +278,7 @@ Reset the state of the object.
 
 Aquire an item to be processed.
 
-returns an identifier to be used to identify the item acquired.
+Returns an identifier to be used to identify the item acquired.
 
 =head2 $object->release()
 

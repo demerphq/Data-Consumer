@@ -127,13 +127,14 @@ if ( $child ) {
     my $num = 0 + @$recs;
     my $expect = 0+@expect_fail;
     $debug and $consumer->debug_warn($expect,"Found $num incorrectly processed items expected $expect.\n");
-    my $ok=!!is($num, $expect, "should be $expect incorrectly processed items");
+    my $err = !is($num, $expect, "should be $expect incorrectly processed items");
     foreach my $idx (0..$#expect_fail) {
-        $ok+=!!is("@{$recs->[$idx]}","@{$expect_fail[$idx]}");
+        $err ||= !is("@{$recs->[$idx]}","@{$expect_fail[$idx]}");
     }
-    $ok or do { warn map {  "[@{$recs->[$_]}] " . ( 7 == $_ % 8 ? "\n" : "" ) } (0..$#$recs)  };
-} else {
-    undef $consumer;
+    if ($err) {
+        warn map {  "[@{$recs->[$_]}] " . ( 7 == $_ % 8 ? "\n" : "" ) } (0..$#$recs);
+    } else {
+        $consumer->dbh->do("DROP TABLE `$table`");
+    }
 }
-
 1;

@@ -10,6 +10,11 @@ use File::Spec;
 use File::Path;
 use Fcntl;
 use Fcntl ':flock';
+use vars qw/$Debug $VERSION $Cmd $Fail/;
+
+*Debug = *Data::Consumer::Debug;
+*Cmd   = *Data::Consumer::Cmd;
+*Fail  = *Data::Consumer::Fail;
 
 BEGIN {
     __PACKAGE__->register();
@@ -17,29 +22,24 @@ BEGIN {
 
 =head1 NAME
 
-Data::Consumer::Mysql - Data::Consumer implementation for a directory of files resource
+Data::Consumer::Dir - Data::Consumer implementation for a directory of files resource
 
 =head1 VERSION
 
-Version 0.01
+Version 0.04
 
 =cut
 
-our $VERSION = '0.01';
+$VERSION = '0.04';
 
 
 =head1 SYNOPSIS
 
     use Data::Consumer::Dir;
-    my $consumer = Data::Consumer::dir->new(
-	dbh => $dbh,
-	table => 'T', 
-        id_field= > 'id',
-	flag_field => 'done', 
-	unprocessed => 0, 
-	working => 1,
-	processed => 2,
-	failed => 3,
+    my $consumer = Data::Consumer::Dir->new(
+        root   => '/some/dir',
+        create => 1,
+        open_mode => '+<',
     );
     $consumer->consume(sub {
         my $id = shift;
@@ -51,7 +51,7 @@ our $VERSION = '0.01';
 
 =head2 new
 
-Constructor for a Data::Consumer::Mysql instance.
+Constructor for a Data::Consumer::Dir instance.
 
 Either the 'root' option must be provided or both 'unprocessed' and 'processed'
 arguments must be defined. Will die if the directories do not exist unless the
@@ -125,7 +125,7 @@ BEGIN {
             for (@keys) {
                 next unless exists $opts{$_};
                 next if -d $opts{$_};
-                mkpath($opts{$_}, $Data::Consumer::Debug, $opts{create_mode} || ());
+                mkpath($opts{$_}, $Debug, $opts{create_mode} || ());
             }
         }
         if ($opts{open_mode}) {
@@ -185,10 +185,10 @@ sub _cf { # cat file
 
 sub _do_callback {
     my ($self,$callback) = @_;
-    local $Data::Consumer::Error;
+    local $Fail;
     if (eval { $callback->($self,@{$self}{qw(lock_spec lock_fh last_id)}); 1; } ) {
-        if ($Data::Consumer::Error) {
-            return "Callback reports an error: $Data::Consumer::Error"
+        if ($Fail) {
+            return "Callback reports an error: $Fail"
         }
         return;
     } else {
@@ -269,4 +269,4 @@ under the same terms as Perl itself.
 
 =cut
 
-1; # End of Data::Consumer::Mysql
+1; # End of Data::Consumer::Fail

@@ -3,7 +3,7 @@ package Data::Consumer;
 use warnings;
 use strict;
 use Carp;
-use vars qw/$Debug $VERSION Fail Cmd/;
+use vars qw/$Debug $VERSION $Fail $Cmd/;
 
 =head1 NAME
 
@@ -11,11 +11,11 @@ Data::Consumer - Repeatedly consume a data resource in a robust way
 
 =head1 VERSION
 
-Version 0.03
+Version 0.04
 
 =cut
 
-$VERSION = '0.03';
+$VERSION = '0.04';
 #$Debug = 1;
 
 =head1 SYNOPSIS
@@ -55,12 +55,8 @@ Thus
 is exactly equivalent to calling
 
     Data::Consumer::MySQL->new(%args);
-
-The subclass name is case insensitive and unless otherwise documented 
-is part of the class name after 'Data::Consumer' has been removed, 
-with colons optionally replaced by dashes.
-
-Thus 'mysql' and 'MYSQL' are valid type names for Data::Consumer::MySQL
+    
+except that the former will automatically require the appropriate module.
 
 =head2 CLASS->register(@alias)
 
@@ -138,8 +134,9 @@ BEGIN {
         if ($class eq __PACKAGE__) {
             my $type = $opts{type}
                 or confess "'type' is a mandatory named parameter for $class->new()\n";
-            $class = $alias2class{lc($type)}
+            unless ($class = $alias2class{lc($type)}) {
                 or confess "'type' parameter '$type' is not a known alias of any registered type currently loaded\n";
+            }   
         }
         my $object = bless {}, $class;
         $class->debug_warn(5,"created new object '$object'");

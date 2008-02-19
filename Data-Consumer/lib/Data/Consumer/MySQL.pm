@@ -6,6 +6,11 @@ use DBI;
 use Carp qw(confess);
 use warnings FATAL => 'all';
 use base 'Data::Consumer';
+use vars qw/$Debug $VERSION $Cmd $Fail/;
+
+*Debug = *Data::Consumer::Debug;
+*Cmd   = *Data::Consumer::Cmd;
+*Fail  = *Data::Consumer::Fail;
 
 BEGIN {
     __PACKAGE__->register();
@@ -17,11 +22,11 @@ Data::Consumer::MySQL - Data::Consumer implementation for a mysql database table
 
 =head1 VERSION
 
-Version 0.01
+Version 0.04
 
 =cut
 
-our $VERSION = '0.01';
+$VERSION = '0.04';
 
 
 =head1 SYNOPSIS
@@ -229,14 +234,7 @@ sub new {
     }
     %$self = %opts;
 
-    #use Data::Dumper;
-    #$Data::Dumper::Sortkeys=1;
-    #if ($Data::Consumer::Debug) {
-    #    foreach my $pfx (qw(select update release)) {
-    #        warn "$pfx\n$opts{$pfx.'_sql'}\n";
-    #        warn "[@{$opts{$pfx.'_args'}}]\n" if $opts{$pfx.'_args'};
-    #    }
-    #}
+
     return $self;
 }
 

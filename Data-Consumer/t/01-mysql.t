@@ -3,12 +3,23 @@ use Data::Consumer::MySQL;
 use strict;
 use warnings;
 use DBI;
-
-my $debug = $ENV{TEST_DEBUG};
-#exit;
+my $debug = @ARGV ? shift : $ENV{TEST_DEBUG};
 our @fake_error;
 our @expect_fail;
 our %process_state;
+our @connect_args;
+
+my $conf_file = 'mysql.pldat';
+if (-e $conf_file) {
+    # eval @connect_args into existance
+    do $conf_file
+        or die $@;
+    unless (@connect_args) {
+        my $reason='no mysql connection details available';
+        eval 'use Test::More skip_all => ; 1;'
+            or die $@;
+    }
+}
 if (!%process_state) {
     %process_state = (
 	unprocessed => 0,
@@ -45,11 +56,11 @@ ENDOFSQL
 
 $insert.=",($_)" for @fake_error; 
 
-my @connect = ("DBI:mysql:dev", 'test', 'test');
+$connect_args[0]=("DBI:mysql:$connect_args[0]");
 
 {
-    my $dbh = DBI->connect(@connect) 
-	or die "Could not connect to database: $DBI::errstr";
+    my $dbh = DBI->connect(@connect_args) 
+	or die "Could not connect to '$connect_args[0]' : $DBI::errstr";
     local $dbh->{PrintError};
     local $dbh->{PrintWarn};
     local $dbh->{RaiseError} = 0;
@@ -88,7 +99,7 @@ $debug and Data::Consumer->debug_warn(0,"starting processing\n");
 $Data::Consumer::Debug=5 if $debug;
 
 my $consumer = Data::Consumer::MySQL->new(
-    connect     => \@connect,
+    connect     => \@connect_args,
     table       => $table,
     flag_field  => 'done',
     %process_state,

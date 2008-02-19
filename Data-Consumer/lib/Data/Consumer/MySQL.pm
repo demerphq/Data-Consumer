@@ -37,10 +37,10 @@ $VERSION= '0.07';
     use Data::Consumer::MySQL;
     my $consumer = Data::Consumer::MySQL->new(
         dbh => $dbh,
-        table => 'T', 
+        table => 'T',
         id_field= > 'id',
-        flag_field => 'done', 
-        unprocessed => 0, 
+        flag_field => 'done',
+        unprocessed => 0,
         working => 1,
         processed => 2,
         failed => 3,
@@ -59,7 +59,7 @@ Constructor for a Data::Consumer::MySQL instance.
 
 Options are as follows:
 
-=over 4 
+=over 4
 
 =item connect => \@connect_args
 
@@ -111,7 +111,7 @@ This will be called with the arguments ($consumer,'working',$id,$dfh)
 
 =item processed => 2
 
-The value of the flag_field which indicates that an item has been successfully 
+The value of the flag_field which indicates that an item has been successfully
 processed. If not provided defaults to 1.
 
 Optional.
@@ -130,7 +130,7 @@ This will be called with the arguments ($consumer,'failed',$id,$dfh)
 
 =item init_id => 0
 
-The value which the first acquired record's id_field must be greater than. 
+The value which the first acquired record's id_field must be greater than.
 Should be smaller than any legal id in the table.  Defaults to 0.
 
 =item select_sql
@@ -144,7 +144,7 @@ return a single record with a single column contain the id to be processed, at t
 same time it should ensure that a lock on the id is created.
 
 The query will be executed with the arguments contained in select_args array, followed
-by the id of the last processed item. 
+by the id of the last processed item.
 
 =item update_sql
 
@@ -154,7 +154,7 @@ These arguments are optional, and will be synthesized from the other values if n
 
 SQL update query which can be used to change the status the record being processed.
 
-Will be executed with the arguments provided in update_args followed the new status, 
+Will be executed with the arguments provided in update_args followed the new status,
 and the id.
 
 =item release_sql
@@ -163,7 +163,7 @@ and the id.
 
 These arguments are optional, and will be synthesized from the other values if not provided.
 
-SQL select query which can be used to clear the currently held lock. 
+SQL select query which can be used to clear the currently held lock.
 
 Will be called with the arguments provided in release_args, plust the id.
 
@@ -215,12 +215,12 @@ sub new {
 
         $opts{select_sql}= do {
             local $_= '
-        SELECT 
+        SELECT
         $id_field
-        FROM $table 
+        FROM $table
         WHERE
         GET_LOCK( CONCAT_WS("=", ?, $id_field ), 0) != 0
-        AND $flag_field $flag_op  
+        AND $flag_field $flag_op
         AND $id_field > ?
         LIMIT 1
         ';
@@ -233,7 +233,7 @@ sub new {
 
     $opts{update_sql} ||= do {
         local $_= '
-        UPDATE $table 
+        UPDATE $table
         SET $flag_field = ?
         WHERE
         $id_field = ?
@@ -269,7 +269,7 @@ Reset the state of the object.
 
 =head2 $object->acquire()
 
-Aquire an item to be processed. 
+Aquire an item to be processed.
 
 returns an identifier to be used to identify the item acquired.
 
@@ -277,7 +277,7 @@ returns an identifier to be used to identify the item acquired.
 
 Release any locks on the currently held item.
 
-Normally there is no need to call this directly. 
+Normally there is no need to call this directly.
 
 =cut
 
@@ -377,9 +377,9 @@ Yves Orton, C<< <YVES at cpan.org> >>
 
 =head1 BUGS
 
-Please report any bugs or feature requests to 
-C<bug-data-consumer at rt.cpan.org>, or through the web interface at 
-L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Data-Consumer>.  
+Please report any bugs or feature requests to
+C<bug-data-consumer at rt.cpan.org>, or through the web interface at
+L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Data-Consumer>.
 
 I will be notified, and then you'll automatically be notified of progress on
 your bug as I make changes.

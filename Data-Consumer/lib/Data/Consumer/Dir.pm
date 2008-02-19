@@ -60,7 +60,7 @@ Either the 'root' option must be provided or both 'unprocessed' and 'processed'
 arguments must be defined. Will die if the directories do not exist unless the
 'create' is defined.
 
-=over 4 
+=over 4
 
 =item unprocessed => $path_spec
 
@@ -94,7 +94,7 @@ This will be called with the arguments ($consumer,'failed',$spec,$fh,$name)
 =item root => $path_spec
 
 Automatically creates any of the unprocessed, working, processed, or failed
-directories below a specified root. Only those directories not explicitly 
+directories below a specified root. Only those directories not explicitly
 defined will be automatically created so this can be used in conjunction
 with the other options
 
@@ -102,13 +102,13 @@ with the other options
 
 =item create_mode => $mode_flags
 
-If true then directories specified by not existing will be created. 
+If true then directories specified by not existing will be created.
 If create_mode is specified then the directories will be created with that mode.
 
 =item open_mode => $mode_str
 
 In order to lock a file a filehandle must be opened, normally in read-only mode
-('<'), however it may be useful to open with other modes. 
+('<'), however it may be useful to open with other modes.
 
 =back
 
@@ -164,7 +164,7 @@ Reset the state of the object.
 
 =head2 $object->acquire()
 
-Aquire an item to be processed. 
+Aquire an item to be processed.
 
 returns an identifier to be used to identify the item acquired.
 
@@ -172,7 +172,7 @@ returns an identifier to be used to identify the item acquired.
 
 Release any locks on the currently held item.
 
-Normally there is no need to call this directly. 
+Normally there is no need to call this directly.
 
 =cut
 
@@ -272,11 +272,11 @@ Yves Orton, C<< <YVES at cpan.org> >>
 
 =head1 BUGS
 
-Please report any bugs or feature requests to 
-C<bug-data-consumer at rt.cpan.org>, or through the web interface at 
-L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Data-Consumer>.  
+Please report any bugs or feature requests to
+C<bug-data-consumer at rt.cpan.org>, or through the web interface at
+L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Data-Consumer>.
 
-I will be notified, and then you'll automatically be notified of progress on 
+I will be notified, and then you'll automatically be notified of progress on
 your bug as I make changes.
 
 

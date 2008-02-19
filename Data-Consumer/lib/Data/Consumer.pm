@@ -27,7 +27,7 @@ $VERSION= '0.07';
     my $consumer = Data::Consumer->new(
         type        => $consumer_name,
         %consumer_args,
-        unprocessed => $unprocessed, 
+        unprocessed => $unprocessed,
         working     => $working,
         processed   => $processed,
         failed      => $failed,
@@ -57,7 +57,7 @@ Thus
 is exactly equivalent to calling
 
     Data::Consumer::MySQL->new(%args);
-    
+
 except that the former will automatically require the appropriate module.
 
 On top of the subclass specific arguments there are certain arguments that
@@ -67,7 +67,7 @@ are shared among all consumers
 
 =item max_passes => $num_or_undef
 
-Normally consume() will loop through the data set until it is exhausted. 
+Normally consume() will loop through the data set until it is exhausted.
 By setting this parameter you can control the maximum number of iterations,
 for instance setting it to 1 will result in a single pass through the data
 per invocation. If 0 (or any other false value) is treated as meaning
@@ -75,13 +75,13 @@ per invocation. If 0 (or any other false value) is treated as meaning
 
 =item max_processed => $num_or_undef
 
-Maximum number of items to process per invocation. 
+Maximum number of items to process per invocation.
 
-If set to a false value there is no limit. 
+If set to a false value there is no limit.
 
 =item max_failed => $num_or_undef
 
-Maximum number of failed process attempts that may occur before consume will stop. 
+Maximum number of failed process attempts that may occur before consume will stop.
 If set to a false value there is no limit. Setting this to 1 will cause processing
 to stop after the first failure.
 
@@ -100,7 +100,7 @@ via the proceed() method. See the documentation of consume() and proceed()
 
 If this parameter is true, and there are four modes defined (unprocessed,
 working, processed, failed) then consume will perform a "sweep up" after
-every pass, which is responsible for moving "abandonded" files from the 
+every pass, which is responsible for moving "abandonded" files from the
 working directory (such as from a previous process that segfaulted during
 processing). Generally this should not be necessary.
 
@@ -112,13 +112,13 @@ processing). Generally this should not be necessary.
 Used by subclasses to register themselves as a Data::Consumer subclass
 and register any additional aliases that the class may be identified as.
 
-Will throw an exception is any of the aliases are already associated to a 
+Will throw an exception is any of the aliases are already associated to a
 different class.
 
-When called on a subclass in list context returns a list of the subclasses 
-registered aliases, 
+When called on a subclass in list context returns a list of the subclasses
+registered aliases,
 
-If called on Data::Consumer in list context returns a list of all alias 
+If called on Data::Consumer in list context returns a list of all alias
 class mappings.
 
 =cut
@@ -195,9 +195,9 @@ BEGIN {
 
 =head2 $object->last_id
 
-Returns the identifier for the last item acquired. 
+Returns the identifier for the last item acquired.
 
-Returns undef if acquire has never been called or if the last 
+Returns undef if acquire has never been called or if the last
 attempt to acquire data failed because none was available.
 
 =cut
@@ -211,14 +211,14 @@ sub last_id {
 
 ** Must be overriden **
 
-Mark an item as a particular type if the object defines that type. 
+Mark an item as a particular type if the object defines that type.
 
 This is wrapped by mark_as() for error checking, so you are guaranteed
-that $type will be one of 
+that $type will be one of
 
     'unprocessed', 'working', 'processed', 'failed'
 
-and that $object->{$type} will be true value, and that $id will be from 
+and that $object->{$type} will be true value, and that $id will be from
 the currently acquired item.
 
 =head2 $object->mark_as($type)
@@ -262,7 +262,7 @@ item is marked as 'processed' once the $callback returns. The return value
 of the $callback is ignored.
 
 $callback will be called with two arguments, the first being the id of the item
-being processed, the second being the consumer object itself.  
+being processed, the second being the consumer object itself.
 
 =cut
 
@@ -289,7 +289,7 @@ Reset the state of the object.
 
 =head2 $object->acquire()
 
-Aquire an item to be processed. 
+Aquire an item to be processed.
 
 returns an identifier to be used to identify the item acquired.
 
@@ -297,7 +297,7 @@ returns an identifier to be used to identify the item acquired.
 
 Release any locks on the currently held item.
 
-Normally there is no need to call this directly. 
+Normally there is no need to call this directly.
 
 =cut
 
@@ -307,7 +307,7 @@ sub release { confess "abstract method must be overriden by subclass\n"; }
 
 =head2 error
 
-Calls the 'error' callback if the user has provided one, otherwise calls 
+Calls the 'error' callback if the user has provided one, otherwise calls
 confess().
 
 =cut
@@ -323,7 +323,7 @@ sub error {
 
 =head2 $object->consume($callback)
 
-Consumes a data resource until it is exhausted using 
+Consumes a data resource until it is exhausted using
 acquire(), process(), and release() as appropriate. Normally this is
 the main method used by external processes.
 
@@ -336,14 +336,14 @@ item), and with the number of passes at the end of each pass (starting with 1).
 =head2 $object->proceed($passes)
 
 Returns true if the conditions specified at construction time are
-satisfied and processing may proceed. Returns false otherwise. 
+satisfied and processing may proceed. Returns false otherwise.
 
 If the user has specified a 'proceed' callback in the constructor then
 this will be executed before any other rules are applied, with a reference
-to the current $object, a reference to the runstats, and if being called at 
-the end of pass with the number of passes. 
+to the current $object, a reference to the runstats, and if being called at
+the end of pass with the number of passes.
 
-If this callback returns true then the other rules will be applied, and 
+If this callback returns true then the other rules will be applied, and
 only if all other conditions from the constructort are satisfied will proceed()
 itself return true.
 
@@ -356,8 +356,8 @@ items are left in the working state. Presumably this is a rare case.
 
 =head2 $object->runstats
 
-Returns a reference to a hash of statistics about the last (or currently running) 
-execution of consume. 
+Returns a reference to a hash of statistics about the last (or currently running)
+execution of consume.
 
 =cut
 
@@ -447,9 +447,9 @@ Yves Orton, C<< <YVES at cpan.org> >>
 
 =head1 BUGS
 
-Please report any bugs or feature requests to 
-C<bug-data-consumer at rt.cpan.org>, or through the web interface at 
-L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Data-Consumer>.  
+Please report any bugs or feature requests to
+C<bug-data-consumer at rt.cpan.org>, or through the web interface at
+L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Data-Consumer>.
 
 I will be notified, and then you'll automatically be notified of progress on
 your bug as I make changes.

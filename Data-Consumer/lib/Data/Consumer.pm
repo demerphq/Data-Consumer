@@ -24,9 +24,9 @@ $VERSION= '0.08';
 =head1 SYNOPSIS
 
     use Data::Consumer;
+
     my $consumer = Data::Consumer->new(
         type        => $consumer_name,
-        %consumer_args,
         unprocessed => $unprocessed,
         working     => $working,
         processed   => $processed,
@@ -35,10 +35,11 @@ $VERSION= '0.08';
         max_process => $num_or_undef,
         max_elapsed => $seconds_or_undef,
     );
-    $consumer->consume(sub {
+
+    $consumer->consume( sub {
         my $id = shift;
         print "processed $id\n";
-    });
+    } );
 
 =head1 DESCRIPTION
 
@@ -49,23 +50,23 @@ Writing a script that handles all the edge cases, like getting "stuck"
 on a failed item, and manages things like locking so that the script 
 can be parallelized can be tricky and repetitive.
 
-The aim of Data::Consumer is to provide a framework to allow writing
+The aim of L<Data::Consumer> is to provide a framework to allow writing
 such consumer type scripts as easy as writing a callback that processes
 each item. The framework handles the rest.
 
-The basic idea is that one need only define a Data::Consumer subclass
-which implements a few primitive methods which handle the required tasks,
-and then the Data::Consumer methods use those to provide a DWIMily 
-consistant interface to the end consumer.
+The basic idea is that one need only define a L<Data::Consumer> subclass
+which implements a few primitive methods which handle the required
+tasks, and then the L<Data::Consumer> methods use those to provide a
+DWIMily consistant interface to the end consumer.
 
-Currently Data::Consumer comes with two subclasses, Data::Consumer::MySQL 
-for handling records in a Mysql db (using the MySQL 'get_lock' function), 
-and Data::Consumer::Dir for handling a drop directory scenario (like for 
-FTP or a mail directory).
+Currently L<Data::Consumer> comes with two subclasses,
+L<Data::Consumer::MySQL> for handling records in a MySQL db (using the
+MySQL C<GET_LOCK()> function), and L<Data::Consumer::Dir> for handling
+a drop directory scenario (like for FTP or a mail directory).
 
-Once a resource type has been defined as a Data::Consumer subclass the use
-pattern is to construct the subclass with the appropriate arguments, and
-then call consume with a callback.
+Once a resource type has been defined as a L<Data::Consumer> subclass
+the use pattern is to construct the subclass with the appropriate
+arguments, and then call consume with a callback.
 
 =head2 The Consumer Pattern
 
@@ -90,27 +91,30 @@ is something like the following pseudo code:
     UNTIL WE HAVE NOT MARKED ANYTHING AS PROCESSED
     RELEASE ANY LOCKS STILL HELD
 
-This implies that each item potentially has four states: 'unprocessed', 'working',
-'processed', 'failed'. In a database these might be values in a field, in a drop 
-directory scenario these would be different directories, but with all of them they 
-would normally be supplied as values to the Data::Consumer subclass being created. 
+This implies that each item potentially has four states: C<unprocessed>,
+C<working>, C<processed> and C<failed>. In a database these might be
+values in a field, in a drop directory scenario these would be different
+directories, but with all of them they would normally be supplied as
+values to the L<Data::Consumer> subclass being created. 
 
 =head2 Subclassing Data::Consumer 
 
-Data::Consumer can be used with any resource type that can be modeled as a queue, 
-supports some form of advisory locking mechanism, and provides a way to discriminate 
-between at least the 'unprocessed' and 'processed' state.
+L<Data::Consumer> can be used with any resource type that can be modeled
+as a queue, supports some form of advisory locking mechanism, and
+provides a way to discriminate between at least the C<unprocessed> and
+C<processed> state.
 
-The three routines that must be defined for a new consumer type are 
-new, reset, acquire, release, and _mark_as, _do_callback, and possibly _fix_sweeper.
+The routines that must be defined for a new consumer type are C<new()>,
+C<reset()>, C<acquire()>, C<release()>, and C<_mark_as()>,
+C<_do_callback()>, and possibly C<_fix_sweeper()>.
 
 =over 4
 
 =item new
 
-It is almost for sure that a subclass will need to override the default constructor.
-All Data::Consumer objects are blessed hashes, and in fact you should always call
-the parents classes constructor first with:
+It is almost for sure that a subclass will need to override the default
+constructor.  All L<Data::Consumer> objects are blessed hashes, and in
+fact you should always call the parents classes constructor first with:
 
     my $self= $class->SUPER::new();
 
@@ -129,48 +133,54 @@ This routine is to release any held locks in the object.
 
 =item _mark_as
 
-This routine is called to "mark" an item as a particular state. It should be able
-to handle user supplied values. For instance Data::Consumer::MySQL implements this
-as an update statement that mapps user supplied values to the consumer state names.
+This routine is called to "mark" an item as a particular state. It
+should be able to handle user supplied values. For instance
+L<Data::Consumer::MySQL> implements this as an update statement that
+mapps user supplied values to the consumer state names.
 
-Possible states are: 'unprocessed', 'working', 'processed', 'failed'
+Possible states are: C<unprocessed>, C<working>, C<processed>,
+C<failed>.
 
 =item _do_callback
 
-This routine is used to call the user supplied callback with the correct arguments.
-What arguments are appropriate for the callback are context dependent on the
-type of class. For instance in Data::Consumer::MySQL calls the callback with the arguments
-($consumer,$id,$dbh) wheras Data::Consumer::Dir calls the callback with the arguments
-($consumer,$filespec,$filehandle,$filename). The point is that the end user should be 
-passed the arguments that make sense, not necessarily the same thing for each consumer 
-type.
+This routine is used to call the user supplied callback with the correct
+arguments.  What arguments are appropriate for the callback are context
+dependent on the type of class. For instance in L<Data::Consumer::MySQL>
+calls the callback with the arguments C<($consumer, $id, $dbh)> wheras
+L<Data::Consumer::Dir> calls the callback with the arguments
+C<($consumer, $filespec, $filehandle, $filename)>. The point is that the
+end user should be passed the arguments that make sense, not necessarily
+the same thing for each consumer type.
 
 =item _fixup_sweeper
 
-Data::Consumer has support for a "sweep-up" mode for handling things that were abandonded
-in the "working" state and moving them to the "failed" state. This is mostly a sanity check
-to prevent things like powerfailures and segfaults leaving an item in a partially or 
-unprocessed state without it being properly marked as failed. In order to do this the 
-Data::Consumer subclass actually creates a private near clone of itself. _fix_sweeper
-is called in case the normal modifications done by the base class routine are not sufficient
-for a subclass. As an example Data::Consumer::MySQL provides this hook while
-Data::Consumer::Dir does not.
+L<Data::Consumer> has support for a "sweep-up" mode for handling things
+that were abandonded in the C<working> state and moving them to the
+C<failed> state. This is mostly a sanity check to prevent things like
+powerfailures and segfaults leaving an item in a partially or
+unprocessed state without it being properly marked as failed. In order
+to do this the L<Data::Consumer> subclass actually creates a private
+near clone of itself. C<_fix_sweeper()> is called in case the normal
+modifications done by the base class routine are not sufficient for a
+subclass. As an example L<Data::Consumer::MySQL> provides this hook
+while L<Data::Consumer::Dir> does not.
 
 =back
 
-It is also normal for a Data::Consumer subclass to provide special methods as needed. For instace
-Data::Consumer::Dir->fh() and Data::Consumer::MySQL->dbh().
+It is also normal for a L<Data::Consumer> subclass to provide special
+methods as needed. For instance C<Data::Consumer::Dir->fh()> and
+C<Data::Consumer::MySQL->dbh()>.
 
 =head1 METHODS
 
 =head2 CLASS->new(%opts)
 
-Constructor. Normally Data::Consumer's constructor is not
-called directly, instead the constructor of a subclass is used.
-However to make it easier to have a data driven load process  
-Data::Consumer accepts the 'type' argument which should specify the
-the short name of the subclass (the part after Data::Consumer::) or
-the full name of the subclass.
+Constructor. Normally L<Data::Consumer>'s constructor is not called
+directly, instead the constructor of a subclass is used.  However to
+make it easier to have a data driven load process  L<Data::Consumer>
+accepts the C<type> argument which should specify the the short name of
+the subclass (the part after C<Data::Consumer::>) or the full name of
+the subclass.
 
 Thus
 
@@ -183,9 +193,10 @@ is exactly equivalent to calling
 except that the former will automatically require or use the appropriate module 
 and the latter necessitates that you do so yourself.
 
-Every Data::Consumer subclass constructor supports the following arguments on 
-top of any that are subclass specific. Additionally some arguments are universally
-used, but have different meaning depending on the subclass. 
+Every L<Data::Consumer> subclass constructor supports the following
+arguments on top of any that are subclass specific. Additionally some
+arguments are universally used, but have different meaning depending on
+the subclass. 
 
 =over 4
 
@@ -193,33 +204,37 @@ used, but have different meaning depending on the subclass.
 
 How to tell if the item is unprocessed. 
 
-How this argument is interpreted depends on the Data::Consumer subclass involved.
+How this argument is interpreted depends on the L<Data::Consumer>
+subclass involved.
 
 =item working
 
 How to tell if the item is currently being worked on.
 
-How this argument is interpreted depends on the Data::Consumer subclass involved.
+How this argument is interpreted depends on the L<Data::Consumer>
+subclass involved.
 
 =item processed
 
 How to tell if the item has already been worked on.
 
-How this argument is interpreted depends on the Data::Consumer subclass involved.
+How this argument is interpreted depends on the L<Data::Consumer>
+subclass involved.
 
 =item failed
 
 How to tell if processing failed while handling the item.
 
-How this argument is interpreted depends on the Data::Consumer subclass involved.
+How this argument is interpreted depends on the L<Data::Consumer>
+subclass involved.
 
 =item max_passes => $num_or_undef
 
-Normally consume() will loop through the data set until it is exhausted.
-By setting this parameter you can control the maximum number of iterations,
-for instance setting it to 1 will result in a single pass through the data
-per invocation. If 0 (or any other false value) is treated as meaning
-"loop until exhausted".
+Normally C<consume()> will loop through the data set until it is
+exhausted.  By setting this parameter you can control the maximum number
+of iterations, for instance setting it to C<1> will result in a single
+pass through the data per invocation. If C<0> (or any other false value)
+is treated as meaning "loop until exhausted".
 
 =item max_processed => $num_or_undef
 
@@ -235,46 +250,50 @@ to stop after the first failure.
 
 =item max_elapsed => $seconds_or_undef
 
-Maximum amount of time that may have elapsed when starting a new process. If
-more than this value has elapsed then no further processing occurs. If 0 (or
-any false value) then there is no time limit.
+Maximum amount of time that may have elapsed when starting a new
+process. If more than this value has elapsed then no further processing
+occurs. If C<0> (or any false value) then there is no time limit.
 
 =item proceed => $code_ref
 
-This is a callback that may be used to control the looping process in consume
-via the proceed() method. See the documentation of consume() and proceed()
+This is a callback that may be used to control the looping process in
+consume via the C<proceed()> method. See the documentation of
+C<consume()> and C<proceed()>
 
 =item sweep => $bool
 
-If this parameter is true, and there are four modes defined (unprocessed,
-working, processed, failed) then consume will perform a "sweep up" after
-every pass, which is responsible for moving "abandonded" files from the
-working directory (such as from a previous process that segfaulted during
-processing). Generally this should not be necessary.
+If this parameter is true, and there are four modes defined
+(C<unprocessed>, C<working>, C<processed>, C<failed>) then consume will
+perform a "sweep up" after every pass, which is responsible for moving
+"abandonded" files from the working directory (such as from a previous
+process that segfaulted during processing). Generally this should
+not be necessary.
 
 =back
 
 
 =head2 CLASS->register(@alias)
 
-Used by subclasses to register themselves as a Data::Consumer subclass
-and register any additional aliases that the class may be identified as.
+Used by subclasses to register themselves as a L<Data::Consumer>
+subclass and register any additional aliases that the class may be
+identified as.
 
-Will throw an exception if any of the aliases are already associated to a
-different class.
+Will throw an exception if any of the aliases are already associated to
+a different class.
 
-When called on a subclass in list context returns a list of the subclasses
-registered aliases,
+When called on a subclass in list context returns a list of the
+subclasses registered aliases,
 
-If called on Data::Consumer in list context returns a list of all alias
-class mappings.
+If called on L<Data::Consumer> in list context returns a list of all
+alias class mappings.
 
 =cut
 
 =head2 $class_or_object->debug_warn($level,@debug_lines)
 
-If Debug is enabled and above $level then print @debug_lines to stdout
-in a specific format that includes the class name of the caller and process id.
+If C<Debug> is enabled and above C<$level> then print C<@debug_lines> to
+C<STDOUT> in a specific format that includes the class name of the
+caller and process id.
 
 =cut
 
@@ -379,7 +398,7 @@ sub last_id {
 
 Mark an item as a particular type if the object defines that type.
 
-Allowed types are 'unprocessed', 'working', 'processed', 'failed'
+Allowed types are C<unprocessed>, C<working>, C<processed>, C<failed>
 
 =cut
 
@@ -410,13 +429,14 @@ BEGIN {
 
 =head2 $object->process($callback)
 
-Marks the current item as 'working' and processes it using the $callback.
-If the $callback dies then the item is marked as 'failed', otherwise the
-item is marked as 'processed' once the $callback returns. The return value
-of the $callback is ignored.
+Marks the current item as C<working> and processes it using the
+C<$callback>. If the C<$callback> dies then the item is marked as
+C<failed>, otherwise the item is marked as C<processed> once the
+C<$callback> returns. The return value of the C<$callback> is ignored.
 
-$callback will be called with two arguments, the first being the id of the item
-being processed, the second being the consumer object itself.
+C<$callback> will be called with two arguments, the first being the id
+of the item being processed, the second being the consumer object
+itself.
 
 =cut
 
@@ -461,8 +481,8 @@ sub release { confess "abstract method must be overriden by subclass\n"; }
 
 =head2 $object->error()
 
-Calls the 'error' callback if the user has provided one, otherwise calls
-confess(). Probably not all that useful for an end user.
+Calls the C<error> callback if the user has provided one, otherwise
+calls C<confess()>. Probably not all that useful for an end user.
 
 =cut
 
@@ -477,36 +497,38 @@ sub error {
 
 =head2 $object->consume($callback)
 
-Consumes a data resource until it is exhausted using
-acquire(), process(), and release() as appropriate. Normally this is
-the main method used by external processes.
+Consumes a data resource until it is exhausted using C<acquire()>,
+C<process()>, and C<release()> as appropriate. Normally this is the main
+method used by external processes.
 
 Before each attempt to acquire a new resource, and once at the end of
-each pass consume will call proceed() to determine if it can do so. The
-user may hook into this by specifying a callback in the constructor. This
-callback will be executed with no args when it is in the inner loop (per
-item), and with the number of passes at the end of each pass (starting with 1).
+each pass consume will call C<proceed()> to determine if it can do so.
+The user may hook into this by specifying a callback in the constructor.
+This callback will be executed with no args when it is in the inner loop
+(per item), and with the number of passes at the end of each pass
+(starting with 1).
 
 =head2 $object->proceed($passes)
 
-Returns true if the conditions specified at construction time are
-satisfied and processing may proceed. Returns false otherwise.
+Returns C<true> if the conditions specified at construction time are
+satisfied and processing may proceed. Returns C<false> otherwise.
 
-If the user has specified a 'proceed' callback in the constructor then
-this will be executed before any other rules are applied, with a reference
-to the current $object, a reference to the runstats, and if being called at
-the end of pass with the number of passes.
+If the user has specified a C<proceed> callback in the constructor then
+this will be executed before any other rules are applied, with a
+reference to the current C<$object>, a reference to the runstats, and if
+being called at the end of pass with the number of passes.
 
-If this callback returns true then the other rules will be applied, and
-only if all other conditions from the constructort are satisfied will proceed()
-itself return true.
+If this callback returns C<true> then the other rules will be applied,
+and only if all other conditions from the constructor are satisfied
+will C<proceed()> itself return C<true>.
 
 =head2 $object->sweep()
 
-If the user has specified both a 'working' and a 'failed' state then
-this routine will move all lockable 'working' items and change them to
-the 'failed' state. This is to catch catastrophic failures where unprocessed
-items are left in the working state. Presumably this is a rare case.
+If the user has specified both a C<working> and a C<failed> state then
+this routine will move all lockable C<working> items and change them to
+the C<failed> state. This is to catch catastrophic failures where
+unprocessed items are left in the working state. Presumably this is a
+rare case.
 
 =head2 $object->runstats()
 

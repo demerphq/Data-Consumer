@@ -5,6 +5,10 @@ use strict;
 use Carp;
 use vars qw/$Debug $VERSION $Fail $Cmd/;
 
+# This code was formatted with the following perltidy options:
+# -ple -ce -bbb -bbc -bbs -nolq -l=100 -noll -nola -nwls='=' -isbc -nolc -otr -kis
+# If you patch it please use the same options for your patch.
+
 =head1 NAME
 
 Data::Consumer - Repeatedly consume a data resource in a robust way
@@ -15,7 +19,7 @@ Version 0.07
 
 =cut
 
-$VERSION = '0.07';
+$VERSION= '0.07';
 
 =head1 SYNOPSIS
 
@@ -119,7 +123,6 @@ class mappings.
 
 =cut
 
-
 =head2 $class_or_object->debug_warn($level,@debug_lines)
 
 If Debug is enabled and above $level then print @debug_lines to stdout
@@ -128,65 +131,65 @@ in a specific format that includes the class name of the caller and process id.
 =cut
 
 sub debug_warn {
-    my $self = shift;
-    my $level = shift;
-    if ($Debug and $Debug >= $level) {
-        warn ref($self)||$self , "\t$$\t>>> $_\n"
-            for @_;
+    my $self= shift;
+    my $level= shift;
+    if ( $Debug and $Debug >= $level ) {
+        warn ref($self) || $self, "\t$$\t>>> $_\n" for @_;
     }
 }
 
 BEGIN {
     my %alias2class;
     my %class2alias;
-    $Debug and $Debug>=5 and warn "\n";
+    $Debug and $Debug >= 5 and warn "\n";
+
     sub register {
-        my $class = shift;
+        my $class= shift;
 
         ref $class
-            and confess "register() is a class method and cannot be called on an object\n";
-        my $pack=__PACKAGE__;
+          and confess "register() is a class method and cannot be called on an object\n";
+        my $pack= __PACKAGE__;
 
-        if ($class eq $pack) {
+        if ( $class eq $pack ) {
             return wantarray ? %alias2class : 0 + keys %alias2class;
         }
 
-        (my $std_name=$class)=~s/^\Q$pack\E:://;
-        $std_name=~s/::/-/g;
+        ( my $std_name= $class ) =~ s/^\Q$pack\E:://;
+        $std_name =~ s/::/-/g;
 
         my @failed;
-        for my $name ($class, $std_name, @_) {
-            if ($alias2class{$name} and $alias2class{$name} ne $class) {
-                push @failed,$name;
+        for my $name ( $class, $std_name, @_ ) {
+            if ( $alias2class{$name} and $alias2class{$name} ne $class ) {
+                push @failed, $name;
                 next;
             }
-            __PACKAGE__->debug_warn(5,"registered '$name' as an alias of '$class'");
-            $alias2class{$name} = $class;
-            $class2alias{$class}{$name}=$class;
+            __PACKAGE__->debug_warn( 5, "registered '$name' as an alias of '$class'" );
+            $alias2class{$name}= $class;
+            $class2alias{$class}{$name}= $class;
         }
-        @failed and 
-            confess "Failed to register aliases for '$class' as they are already used\n",
-                    join("\n",map { "\t'$_' is already assigned to '$alias2class{$_}'"} @failed),
-                    "\n";
-        return wantarray ? %{$class2alias{$class}} : 0 + keys %{$class2alias{$class}};
+        @failed
+          and confess "Failed to register aliases for '$class' as they are already used\n",
+          join( "\n", map { "\t'$_' is already assigned to '$alias2class{$_}'" } @failed ),
+          "\n";
+        return wantarray ? %{ $class2alias{$class} } : 0 + keys %{ $class2alias{$class} };
     }
 
     sub new {
-        my ($class, %opts)= @_;
-        ref $class 
-            and confess "new() is a class method and cannot be called on an object\n";
+        my ( $class, %opts )= @_;
+        ref $class
+          and confess "new() is a class method and cannot be called on an object\n";
 
-        if ($class eq __PACKAGE__) {
-            my $type = $opts{type}
-                or confess "'type' is a mandatory named parameter for $class->new()\n";
-            eval "require $class\::$type";  
-            unless ($class = $alias2class{$type}) {
+        if ( $class eq __PACKAGE__ ) {
+            my $type= $opts{type}
+              or confess "'type' is a mandatory named parameter for $class->new()\n";
+            eval "require $class\::$type";
+            unless ( $class= $alias2class{$type} ) {
                 confess "'type' parameter '$type' is either not installed or incorrect\n";
-            }   
+            }
         }
-        my $object = bless {}, $class;
-        $class->debug_warn(5,"created new object '$object'");
-        return $object
+        my $object= bless {}, $class;
+        $class->debug_warn( 5, "created new object '$object'" );
+        return $object;
     }
 }
 
@@ -200,7 +203,7 @@ attempt to acquire data failed because none was available.
 =cut
 
 sub last_id {
-    my $self = shift;
+    my $self= shift;
     return $self->{last_id};
 }
 
@@ -227,26 +230,27 @@ Allowed types are 'unprocessed', 'working', 'processed', 'failed'
 =cut
 
 sub _mark_as { confess "must be overriden" }
+
 BEGIN {
-    my (%valid,@valid);
-    @valid = qw ( unprocessed working processed failed );
-    @valid{@valid} = (1..@valid);
+    my ( %valid, @valid );
+    @valid= qw ( unprocessed working processed failed );
+    @valid{@valid}= ( 1 .. @valid );
 
     sub mark_as {
-        my $self = shift @_;
-        my $key = shift @_;
-        
-        $valid{$key} 
-            or confess "Unknown type in mark_as(), valid options are ", 
-                  join(", ", map { "'$_'" } @valid),
-                  "\n";
+        my $self= shift @_;
+        my $key= shift @_;
 
-        my $id = @_ ? shift @_ : $self->last_id;
-        defined $id 
-            or confess "Nothing acquired to be marked as '$key' in mark_as.\n";
+        $valid{$key}
+          or confess "Unknown type in mark_as(), valid options are ",
+          join( ", ", map { "'$_'" } @valid ),
+          "\n";
+
+        my $id= @_ ? shift @_ : $self->last_id;
+        defined $id
+          or confess "Nothing acquired to be marked as '$key' in mark_as.\n";
 
         return unless $self->{$key};
-        return $self->_mark_as($key,$id);
+        return $self->_mark_as( $key, $id );
     }
 }
 
@@ -262,17 +266,15 @@ being processed, the second being the consumer object itself.
 
 =cut
 
-
-
 sub process {
-    my $self = shift;
-    my $callback = shift;
-    my $id = $self->last_id;
-    defined $id 
-        or $self->error("Undefined last_id. Nothing acquired yet?");
+    my $self= shift;
+    my $callback= shift;
+    my $id= $self->last_id;
+    defined $id
+      or $self->error("Undefined last_id. Nothing acquired yet?");
     $self->mark_as('working');
     local $Cmd;
-    if ( my $error = $self->_do_callback($callback) ) {
+    if ( my $error= $self->_do_callback($callback) ) {
         $self->mark_as('failed');
         $self->error($error);
     } else {
@@ -280,7 +282,6 @@ sub process {
     }
     return 1;
 }
-
 
 =head2  $object->reset()
 
@@ -311,17 +312,14 @@ confess().
 
 =cut
 
-
-sub error   { 
-    my $self=shift;
-    if ($self->{error}) {
+sub error {
+    my $self= shift;
+    if ( $self->{error} ) {
         $self->{error}->(@_);
     } else {
-        confess @_
+        confess @_;
     }
 }
-
-
 
 =head2 $object->consume($callback)
 
@@ -366,79 +364,81 @@ execution of consume.
 sub runstats { $_[0]->{runstats} }
 
 sub proceed {
-    my $self = shift;
-    my $runstats = $self->{runstats};
-    $runstats->{end_time} = time;
-    $runstats->{elapsed} = $runstats->{end_time} - $runstats->{start_time};
-    
-    if (my $cb = $self->{proceed}) {
-        $cb->($self,$self->{runstats},@_) # pass on the $passes argument if its there 
-            or return; 
+    my $self= shift;
+    my $runstats= $self->{runstats};
+    $runstats->{end_time}= time;
+    $runstats->{elapsed}= $runstats->{end_time} - $runstats->{start_time};
+
+    if ( my $cb= $self->{proceed} ) {
+        $cb->( $self, $self->{runstats}, @_ )    # pass on the $passes argument if its there
+          or return;
     }
-    for my $key ( qw(elapsed passes processed failed) ) {
-        my $max = "max_$key";
+    for my $key (qw(elapsed passes processed failed)) {
+        my $max= "max_$key";
         return if $self->{$max} && $runstats->{$key} > $self->{$max};
-    } 
-    
-    return 1
+    }
+
+    return 1;
 }
 
 sub consume {
-    my $self = shift;
-    my $callback = shift;
+    my $self= shift;
+    my $callback= shift;
 
-    my $passes  = 0;
+    my $passes= 0;
 
     my %runstats;
-    $self->{runstats}=\%runstats;
-    
-    $runstats{start_time} = time;
-    $runstats{$_} = 0 
-        for qw(passes updated failed updated_this_pass failed_this_pass);
- 
+    $self->{runstats}= \%runstats;
+
+    $runstats{start_time}= time;
+    $runstats{$_}= 0 for qw(passes updated failed updated_this_pass failed_this_pass);
+
     $self->reset();
-    do  {
+    do {
         ++$runstats{passes};
-        $runstats{updated_this_pass} = $runstats{failed_this_pass} = 0;
-        while ( $self->proceed && defined( my $item = $self->acquire ) ) 
-        {
-            eval { 
+        $runstats{updated_this_pass}= $runstats{failed_this_pass}= 0;
+        while ( $self->proceed && defined( my $item= $self->acquire ) ) {
+            eval {
                 $self->process($callback);
                 $runstats{updated_this_pass}++;
                 $runstats{updated}++;
-                1; 
-            } or do {
+                1;
+              }
+              or do {
                 $runstats{failed_this_pass}++;
                 $runstats{failed}++;
+
                 # quotes force string copy
-                $self->error("Failed during callback handling: $@"); 
-            };
+                $self->error("Failed during callback handling: $@");
+              };
         }
-        $self->_sweep() if $self->{sweep}; 
-    } while $self->proceed($runstats{passes}) 
-         && $runstats{updated_this_pass};
+        $self->_sweep() if $self->{sweep};
+      } while $self->proceed( $runstats{passes} )
+          && $runstats{updated_this_pass};
 
     # if we still hold a lock let it go.
-    $self->release; 
+    $self->release;
     return \%runstats;
 }
-sub _fixup_sweeper { 
-    #nop
+
+sub _fixup_sweeper {
+    ;    # no-op (semicolon prevents tidy from messing with this line)
 }
+
 sub _sweep {
-    my $self = shift;
+    my $self= shift;
     return unless $self->{sweep};
-    unless ($self->{sweeper}) {
-        my $new = bless{%$self},ref $self;
-        
-        @$new{'unprocessed','processed'}=@$new{'working','failed'};
+    unless ( $self->{sweeper} ) {
+        my $new= bless {%$self}, ref $self;
+
+        @$new{ 'unprocessed', 'processed' }= @$new{ 'working', 'failed' };
         delete @$new{qw(proceed runstats working failed sweep sweeper)};
-        
+
         $self->_fixup_sweeper($new);
-        
-        $self->{sweeper} = $new;
+
+        $self->{sweeper}= $new;
     }
-    $self->{sweeper}->consume(sub { $self->debug_warn(5,"sweeping up $_[1]") });
+    $self->{sweeper}->consume( sub { $self->debug_warn( 5, "sweeping up $_[1]" ) } );
 }
 
 =head1 AUTHOR
@@ -483,6 +483,7 @@ L<http://search.cpan.org/dist/Data-Consumer>
 
 =head1 ACKNOWLEDGEMENTS
 
+Igor Sutton for ideas, testing and support.
 
 =head1 COPYRIGHT & LICENSE
 
@@ -493,4 +494,5 @@ under the same terms as Perl itself.
 
 =cut
 
-1; # End of Data::Consumer
+1;    # End of Data::Consumer
+

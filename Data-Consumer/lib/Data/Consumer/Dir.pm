@@ -12,9 +12,13 @@ use Fcntl;
 use Fcntl ':flock';
 use vars qw/$Debug $VERSION $Cmd $Fail/;
 
-*Debug = *Data::Consumer::Debug;
-*Cmd   = *Data::Consumer::Cmd;
-*Fail  = *Data::Consumer::Fail;
+# This code was formatted with the following perltidy options:
+# -ple -ce -bbb -bbc -bbs -nolq -l=100 -noll -nola -nwls='=' -isbc -nolc -otr -kis
+# If you patch it please use the same options for your patch.
+
+*Debug= *Data::Consumer::Debug;
+*Cmd= *Data::Consumer::Cmd;
+*Fail= *Data::Consumer::Fail;
 
 BEGIN {
     __PACKAGE__->register();
@@ -30,8 +34,7 @@ Version 0.06
 
 =cut
 
-$VERSION = '0.07';
-
+$VERSION= '0.07';
 
 =head1 SYNOPSIS
 
@@ -111,51 +114,49 @@ In order to lock a file a filehandle must be opened, normally in read-only mode
 
 =cut
 
-BEGIN { 
-    my @keys=qw(unprocessed working processed failed);
-    my %m = ( 
-        '<' => O_RDONLY, 
-        '+<' => O_RDWR, 
-        '>>' => O_APPEND|O_WRONLY,
-        '+>>' => O_APPEND|O_RDWR,
+BEGIN {
+    my @keys= qw(unprocessed working processed failed);
+    my %m= (
+        '<'   => O_RDONLY,
+        '+<'  => O_RDWR,
+        '>>'  => O_APPEND | O_WRONLY,
+        '+>>' => O_APPEND | O_RDWR,
     );
-    $_ = $_ | O_NONBLOCK for values %m;
+    $_= $_ | O_NONBLOCK for values %m;
 
     sub new {
-        my ($class, %opts)=@_;
-        my $self = $class->SUPER::new(); # let Data::Consumer bless the hash
+        my ( $class, %opts )= @_;
+        my $self= $class->SUPER::new();    # let Data::Consumer bless the hash
 
-        if ($opts{root}) {
-            my ($v,$p)= File::Spec->splitpath($opts{root},'nofile');
+        if ( $opts{root} ) {
+            my ( $v, $p )= File::Spec->splitpath( $opts{root}, 'nofile' );
             for my $type (@keys) {
-                $opts{$type} ||= File::Spec->catpath($v,File::Spec->catdir($p,$type),'');
+                $opts{$type} ||= File::Spec->catpath( $v, File::Spec->catdir( $p, $type ), '' );
             }
         }
-        ($opts{unprocessed} and $opts{processed}) or 
-            confess "Arguments 'unprocessed' and 'processed' are mandatory";
-        
-        if ($opts{create}) {
+        ( $opts{unprocessed} and $opts{processed} )
+          or confess "Arguments 'unprocessed' and 'processed' are mandatory";
+
+        if ( $opts{create} ) {
             for (@keys) {
                 next unless exists $opts{$_};
                 next if -d $opts{$_};
-                mkpath($opts{$_}, $Debug, $opts{create_mode} || ());
+                mkpath( $opts{$_}, $Debug, $opts{create_mode} || () );
             }
         }
-        if ($opts{open_mode}) {
-            exists $m{$opts{open_mode}}
-                or confess "Illegal open mode '$opts{open_mode}' legal options are "
-                           . join(',', map { "'$_'" } sort keys %m)
-                           . "\n";
-            $opts{open_mode} = $m{$opts{open_mode}};    
+        if ( $opts{open_mode} ) {
+            exists $m{ $opts{open_mode} }
+              or confess "Illegal open mode '$opts{open_mode}' legal options are "
+              . join( ',', map { "'$_'" } sort keys %m ) . "\n";
+            $opts{open_mode}= $m{ $opts{open_mode} };
         } else {
-            $opts{open_mode} = O_RDONLY|O_NONBLOCK;
-        }   
-        
-        %$self = %opts;
+            $opts{open_mode}= O_RDONLY | O_NONBLOCK;
+        }
+
+        %$self= %opts;
         return $self;
     }
 }
-
 
 =head2  $object->reset()
 
@@ -175,33 +176,33 @@ Normally there is no need to call this directly.
 
 =cut
 
-
-sub reset { 
-    my $self = shift;
-    $self->debug_warn(5,"reset (scanning $self->{unprocessed})");
+sub reset {
+    my $self= shift;
+    $self->debug_warn( 5, "reset (scanning $self->{unprocessed})" );
     $self->release();
-    opendir my $dh, $self->{unprocessed} 
-        or die "Failed to opendir '$self->{unprocessed}': $!";
-    my @files = map {/(.*)/s && $1 } readdir($dh);
+    opendir my $dh, $self->{unprocessed}
+      or die "Failed to opendir '$self->{unprocessed}': $!";
+    my @files= map { /(.*)/s && $1 } readdir($dh);
+
     #print for @files;
-    @files = sort grep { -f _cf($self->{unprocessed},$_) } @files;
-    $self->{files}=\@files;
+    @files= sort grep { -f _cf( $self->{unprocessed}, $_ ) } @files;
+    $self->{files}= \@files;
     return $self;
 }
 
-sub _cf { # cat file
-    my ($r,$f) =@_;
+sub _cf {    # cat file
+    my ( $r, $f )= @_;
 
-    my ($v,$p)= File::Spec->splitpath($r,'nofile');
-    return File::Spec->catpath($v,$p,$f);
+    my ( $v, $p )= File::Spec->splitpath( $r, 'nofile' );
+    return File::Spec->catpath( $v, $p, $f );
 }
 
 sub _do_callback {
-    my ($self,$callback) = @_;
+    my ( $self, $callback )= @_;
     local $Fail;
-    if (eval { $callback->($self,@{$self}{qw(lock_spec lock_fh last_id)}); 1; } ) {
+    if ( eval { $callback->( $self, @{$self}{qw(lock_spec lock_fh last_id)} ); 1; } ) {
         if ($Fail) {
-            return "Callback reports an error: $Fail"
+            return "Callback reports an error: $Fail";
         }
         return;
     } else {
@@ -209,33 +210,33 @@ sub _do_callback {
     }
 }
 
-sub acquire { 
-    my $self = shift;
-    my $dbh = $self->{dbh};
+sub acquire {
+    my $self= shift;
+    my $dbh= $self->{dbh};
 
     $self->reset if !@{ $self->{files} || [] };
 
-    my $files = $self->{files};
+    my $files= $self->{files};
     while (@$files) {
-        my $file = shift @$files;
-        my $spec = _cf($self->{unprocessed},$file);
+        my $file= shift @$files;
+        my $spec= _cf( $self->{unprocessed}, $file );
         my $fh;
-        if (sysopen $fh,$spec,$self->{open_mode} and flock($fh,LOCK_EX|LOCK_NB)) {
-            $self->{lock_fh} = $fh;
-            $self->{lock_spec} = $spec;
-            $self->debug_warn(5,"acquired '$file': $spec");
-            $self->{last_id} = $file;
+        if ( sysopen $fh, $spec, $self->{open_mode} and flock( $fh, LOCK_EX | LOCK_NB ) ) {
+            $self->{lock_fh}= $fh;
+            $self->{lock_spec}= $spec;
+            $self->debug_warn( 5, "acquired '$file': $spec" );
+            $self->{last_id}= $file;
             return $file;
         }
     }
-    $self->debug_warn(5,"acquire failed -- resource has been exhausted");
-    return
+    $self->debug_warn( 5, "acquire failed -- resource has been exhausted" );
+    return;
 }
 
 sub release {
-    my $self = shift;
-    
-    flock($self->{lock_fh},LOCK_UN) if $self->{lock_fh};
+    my $self= shift;
+
+    flock( $self->{lock_fh}, LOCK_UN ) if $self->{lock_fh};
     delete $self->{lock_fh};
     delete $self->{lock_spec};
     delete $self->{last_id};
@@ -243,28 +244,27 @@ sub release {
 }
 
 sub _mark_as {
-    my ($self, $key, $id)= @_;
+    my ( $self, $key, $id )= @_;
 
-    if ($self->{$key}) {
-        if (ref $self->{$key}) { 
+    if ( $self->{$key} ) {
+        if ( ref $self->{$key} ) {
+
             # assume it must be a callback
-            $self->debug_warn(5,"executing mark_as callback for '$key'");
-            $self->{$key}->($self,$key,$self->{lock_spec},$self->{lock_fh},$self->{last_id});
+            $self->debug_warn( 5, "executing mark_as callback for '$key'" );
+            $self->{$key}->( $self, $key, $self->{lock_spec}, $self->{lock_fh}, $self->{last_id} );
             return;
-        }    
-        my $spec = _cf($self->{$key},$self->{last_id});
+        }
+        my $spec= _cf( $self->{$key}, $self->{last_id} );
         rename $self->{lock_spec}, $spec
-            or confess "$$: Failed to rename '$self->{lock_spec}' to '$spec':$!";
-        $self->{lock_spec} = $spec;
+          or confess "$$: Failed to rename '$self->{lock_spec}' to '$spec':$!";
+        $self->{lock_spec}= $spec;
     }
 }
 
- 
 sub DESTROY {
-    my $self = shift;
-    $self->release() if $self
+    my $self= shift;
+    $self->release() if $self;
 }
-
 
 =head1 AUTHOR
 
@@ -289,4 +289,5 @@ under the same terms as Perl itself.
 
 =cut
 
-1; # End of Data::Consumer::Dir
+1;    # End of Data::Consumer::Dir
+

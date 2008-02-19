@@ -22,25 +22,25 @@ Data::Consumer::MySQL - Data::Consumer implementation for a mysql database table
 
 =head1 VERSION
 
-Version 0.04
+Version 0.05
 
 =cut
 
-$VERSION = '0.04';
+$VERSION = '0.05';
 
 
 =head1 SYNOPSIS
 
     use Data::Consumer::MySQL;
     my $consumer = Data::Consumer::MySQL->new(
-	dbh => $dbh,
-	table => 'T', 
+        dbh => $dbh,
+        table => 'T', 
         id_field= > 'id',
-	flag_field => 'done', 
-	unprocessed => 0, 
-	working => 1,
-	processed => 2,
-	failed => 3,
+        flag_field => 'done', 
+        unprocessed => 0, 
+        working => 1,
+        processed => 2,
+        failed => 3,
     );
     $consumer->consume(sub {
         my $id = shift;
@@ -177,7 +177,10 @@ sub new {
     $opts{processed} = 1 
         unless exists $opts{processed};
     
-    if (!$opts{select_sql}) {
+    $opts{sweep} = !grep{/_sql/} keys %opts
+        unless exists $opts{sweep};
+        
+    unless ($opts{select_sql}) {
         my $flag_op;
         my @flag_val;
         if (exists $opts{unprocessed}) {
@@ -193,29 +196,29 @@ sub new {
         }
         
         $opts{select_sql} = do{
-	    local $_ = '
-		SELECT 
-		$id_field
-		FROM $table 
-		WHERE
-		$flag_field $flag_op
-		AND GET_LOCK( CONCAT_WS("=", ?, $id_field ), 0) != 0 
-		AND $id_field > ?
-		LIMIT 1
-	    ';
-	    s/^\s+//mg;
-	    s/\$(\w+)/$opts{$1} || confess "Option $1 is mandatory"/ge;
-	    $_;
+        local $_ = '
+        SELECT 
+        $id_field
+        FROM $table 
+        WHERE
+        GET_LOCK( CONCAT_WS("=", ?, $id_field ), 0) != 0
+        AND $flag_field $flag_op  
+        AND $id_field > ?
+        LIMIT 1
+        ';
+        s/^\s+//mg;
+        s/\$(\w+)/$opts{$1} || confess "Option $1 is mandatory"/ge;
+        $_;
         };
-        $opts{select_args}=[@flag_val,$opts{lock_prefix}];
+        $opts{select_args}=[$opts{lock_prefix},@flag_val];
     }
 
     $opts{update_sql} ||= do {
         local $_ = '
-	    UPDATE $table 
-	    SET $flag_field = ?
-	    WHERE
-	    $id_field = ?
+        UPDATE $table 
+        SET $flag_field = ?
+        WHERE
+        $id_field = ?
         ';
         s/^\s+//mg;
         s/\$(\w+)/$opts{$1} || confess "Option $1 is mandatory"/ge;
@@ -223,13 +226,13 @@ sub new {
     };
     if (!$opts{release_sql}) {
         $opts{release_sql} = do {
-	    local $_ = '
-		SELECT RELEASE_LOCK( CONCAT_WS("=", ?, ? ) )
-	    ';
-	    s/^\s+//mg;
-	    s/\$(\w+)/$opts{$1} || confess "Option $1 is mandatory"/ge;
-	    $_;
-	};
+        local $_ = '
+        SELECT RELEASE_LOCK( CONCAT_WS("=", ?, ? ) )
+        ';
+        s/^\s+//mg;
+        s/\$(\w+)/$opts{$1} || confess "Option $1 is mandatory"/ge;
+        $_;
+    };
         $opts{release_args} = [ $opts{lock_prefix} ];
     }
     %$self = %opts;
@@ -238,7 +241,10 @@ sub new {
     return $self;
 }
 
-
+sub _fixup_sweeper { 
+    my ($self,$sweeper)=@_;
+    $sweeper->{select_args}[-1] = $self->{working};
+}
 
 =head2  $object->reset()
 

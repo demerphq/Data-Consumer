@@ -11,11 +11,11 @@ Data::Consumer - Repeatedly consume a data resource in a robust way
 
 =head1 VERSION
 
-Version 0.04
+Version 0.05
 
 =cut
 
-$VERSION = '0.04';
+$VERSION = '0.05';
 
 =head1 SYNOPSIS
 
@@ -122,7 +122,7 @@ in a specific format that includes the class name of the caller and process id.
 sub debug_warn {
     my $self = shift;
     my $level = shift;
-    if ($Debug and $Debug>=$level) {
+    if ($Debug and $Debug >= $level) {
         warn ref($self)||$self , "\t$$\t>>> $_\n"
             for @_;
     }
@@ -147,7 +147,7 @@ BEGIN {
         $std_name=~s/::/-/g;
 
         my @failed;
-        for my $name (map { lc $_ } $class, $std_name, @_) {
+        for my $name ($class, $std_name, @_) {
             if ($alias2class{$name} and $alias2class{$name} ne $class) {
                 push @failed,$name;
                 next;
@@ -158,7 +158,7 @@ BEGIN {
         }
         @failed and 
             confess "Failed to register aliases for '$class' as they are already used\n",
-                    join("\n",map { "\t'$_' is already assigned to '$alias2class{lc($_)}'"} @failed),
+                    join("\n",map { "\t'$_' is already assigned to '$alias2class{$_}'"} @failed),
                     "\n";
         return wantarray ? %{$class2alias{$class}} : 0 + keys %{$class2alias{$class}};
     }
@@ -171,8 +171,9 @@ BEGIN {
         if ($class eq __PACKAGE__) {
             my $type = $opts{type}
                 or confess "'type' is a mandatory named parameter for $class->new()\n";
-            unless ($class = $alias2class{lc($type)}) {
-                or confess "'type' parameter '$type' is not a known alias of any registered type currently loaded\n";
+            eval "require $class\::$type";  
+            unless ($class = $alias2class{$type}) {
+                confess "'type' parameter '$type' is either not installed or incorrect\n";
             }   
         }
         my $object = bless {}, $class;
@@ -262,6 +263,7 @@ sub process {
     defined $id 
         or $self->error("Undefined last_id. Nothing acquired yet?");
     $self->mark_as('working');
+    local $Cmd;
     if ( my $error = $self->_do_callback($callback) ) {
         $self->mark_as('failed');
         $self->error($error);
@@ -339,6 +341,13 @@ If this callback returns true then the other rules will be applied, and
 only if all other conditions from the constructort are satisfied will proceed()
 itself return true.
 
+=head2 $object->sweep
+
+If the user has specified both a 'working' and a 'failed' state then
+this routine will move all lockable 'working' items and change them to
+the 'failed' state. This is to catch catastrophic failures where unprocessed
+items are left in the working state. Presumably this is a rare case.
+
 =head2 $object->runstats
 
 Returns a reference to a hash of statistics about the last (or currently running) 
@@ -358,7 +367,7 @@ sub proceed {
         $cb->($self,$self->{runstats},@_) # pass on the $passes argument if its there 
             or return; 
     }
-    for $key ( qw(elapsed passes processed failed) ) {
+    for my $key ( qw(elapsed passes processed failed) ) {
         my $max = "max_$key";
         return if $self->{$max} && $runstats->{$key} > $self->{$max};
     } 
@@ -396,13 +405,32 @@ sub consume {
                 # quotes force string copy
                 $self->error("Failed during callback handling: $@"); 
             };
-        } 
-    } while $self->proceed($runstas{passes}) 
+        }
+        $self->_sweep() if $self->{sweep}; 
+    } while $self->proceed($runstats{passes}) 
          && $runstats{updated_this_pass};
 
     # if we still hold a lock let it go.
     $self->release; 
     return \%runstats;
+}
+sub _fixup_sweeper { 
+    #nop
+}
+sub _sweep {
+    my $self = shift;
+    return unless $self->{sweep};
+    unless ($self->{sweeper}) {
+        my $new = bless{%$self},ref $self;
+        
+        @$new{'unprocessed','processed'}=@$new{'working','failed'};
+        delete @$new{qw(proceed runstats working failed sweep sweeper)};
+        
+        $self->_fixup_sweeper($new);
+        
+        $self->{sweeper} = $new;
+    }
+    $self->{sweeper}->consume(sub { $self->debug_warn(5,"sweeping up $_[1]") });
 }
 
 =head1 AUTHOR

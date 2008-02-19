@@ -4,8 +4,9 @@ use strict;
 use warnings;
 use DBI;
 
-my $debug = 0;
+my $debug = $ENV{TEST_DEBUG};
 #exit;
+our @fake_error;
 our %process_state;
 if (!%process_state) {
     %process_state = (
@@ -34,13 +35,18 @@ ENDOFSQL
 # 100 rows
 my $insert = <<"ENDOFSQL";
 INSERT INTO `$table` (done) VALUES 
-        (0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0),
-        (0),(0),(0),(0),(0),(0),(0),(0),(0),(0),(0)
+        (0),(0),(0),(0),(0),(0),(0),(0),(0),(0),
+        (0),(0),(0),(0),(0),(0),(0),(0),(0),(0),
+        (0),(0),(0),(0),(0),(0),(0),(0),(0),(0),
+        (0),(0),(0),(0),(0),(0),(0),(0),(0),(0),
+        (0),(0),(0),(0),(0),(0),(0),(0),(0),(0)
 ENDOFSQL
+
+$insert.=",($_)" for @fake_error; 
 
 my @connect = ("DBI:mysql:dev", 'test', 'test');
 
-INIT:{
+{
     my $dbh = DBI->connect(@connect) 
 	or die "Could not connect to database: $DBI::errstr";
     local $dbh->{PrintError};

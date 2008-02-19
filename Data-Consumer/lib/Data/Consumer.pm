@@ -23,6 +23,7 @@ $VERSION = '0.01';
 =head1 SYNOPSIS
 
     use Data::Consumer;
+    use Data::Consumer::Mysql;
     my $consumer = Data::Consumer->new(
         type => 'Mysql',
 	dbh => $dbh,
@@ -148,7 +149,7 @@ sub new {
 }
 }
 
-=head2 last_id
+=head2 $object->last_id
 
 Returns the identifier for the last item acquired. 
 

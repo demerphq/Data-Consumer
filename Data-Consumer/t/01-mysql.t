@@ -1,5 +1,5 @@
 ##!perl -T
-use Data::Consumer::MySQL;
+use Data::Consumer;
 use strict;
 use warnings;
 use DBI;
@@ -9,7 +9,9 @@ our @expect_fail;
 our %process_state;
 our @connect_args;
 our $table;
-
+our $class_to_test;
+eval 'use Data::Consumer::MySQL; 1' or die $@ 
+    if !$class_to_test;
 my $conf_file = 'mysql.pldat';
 if (-e $conf_file) {
     # eval @connect_args into existance
@@ -98,7 +100,12 @@ $child and diag("This will take around 30 seconds\n");
 $debug and Data::Consumer->debug_warn(0,"starting processing\n");
 $Data::Consumer::Debug=5 if $debug;
 
-my $consumer = Data::Consumer::MySQL->new(
+my %xargs;
+%xargs=qw(type MySQL) if $class_to_test;
+$class_to_test||="Data::Consumer::MySQL";
+
+my $consumer = $class_to_test->new(
+    %xargs,
     connect     => \@connect_args,
     table       => $table,
     flag_field  => 'done',

@@ -43,23 +43,24 @@ $VERSION= '0.08';
 
 =head1 DESCRIPTION
 
-It is a common requirement to need to process a feed of some sort in
-a robust manner. Such a feed might be records that are inserted into
-a table, or files dropped in a delivery directory, or what have you.
+It is a common requirement to need to process a feed of items of some 
+sort in a robust manner. Such a feed might be records that are inserted 
+into a table, or files dropped in a delivery directory.
 Writing a script that handles all the edge cases, like getting "stuck"
 on a failed item, and manages things like locking so that the script 
-can be parallelized can be tricky and repetitive.
+can be parallelized can be tricky and is certainly repetitive.
 
 The aim of L<Data::Consumer> is to provide a framework to allow writing
 such consumer type scripts as easy as writing a callback that processes
 each item. The framework handles the rest.
 
-The basic idea is that one need only define a L<Data::Consumer> subclass
-which implements a few primitive methods which handle the required
-tasks, and then the L<Data::Consumer> methods use those to provide a
-DWIMily consistant interface to the end consumer.
+The basic idea is that one need only use, or in the case of a feed type 
+not already supported, define a L<Data::Consumer> subclass
+which implements a few reasonably well defined primitive methods which 
+handle the required tasks, and then the L<Data::Consumer> methods use 
+those to provide a DWIMily consistant interface to the end consumer.
 
-Currently L<Data::Consumer> comes with two subclasses,
+Currently L<Data::Consumer> is distributed with two subclasses,
 L<Data::Consumer::MySQL> for handling records in a MySQL db (using the
 MySQL C<GET_LOCK()> function), and L<Data::Consumer::Dir> for handling
 a drop directory scenario (like for FTP or a mail directory).
@@ -70,25 +71,27 @@ arguments, and then call consume with a callback.
 
 =head2 The Consumer Pattern
 
-The consumer pattern is where code wants to consume an atomlike resource
-piece by piece. They dont want to worry about how they got the piece, that
-should be handled by the framework. The consumer subclasses assume that the
-resource can be modeled as a queue (that there is some ordering principle by
-which they can be processed in a predictable sequence). The consume pattern
-is something like the following pseudo code:
+The consumer pattern is where code wants to consume an 'atomic' resource
+piece by piece. The consuming codes doesnt really want to worry much 
+about how they got the piece a task that should be handled by the framework. 
+The consumer subclasses assume that the resource can be modeled as a 
+queue (that there is some ordering principle by which they can be processed 
+in a predictable sequence). The consume pattern in full glory is something 
+very close to the following following pseudo code. The items marked with 
+asterixs are where user callbacks may be invoked:
 
     DO
         RESET TO THE BEGINNING OF THE QUEUE
-	WHILE WE HAVE NOT REACHED THE END OF THE QUEUE
+	WHILE QUEUE NOT EMPTY AND CAN *PROCEED*
 	    ACQUIRE NEXT ITEM TO PROCESS FROM QUEUE
-	    MARK AS WORKING
-	    PROCESS ITEM
+	    MARK AS 'WORKING'
+	    *PROCESS* ITEM 
 	    IF PROCESSING FAILED
-		MARK AS FAILED
+		MARK AS 'FAILED'
 	    OTHERWISE 
-		MARK AS PROCESSED
-        SWEEP UP ABANDONDED 'WORKING' ITEMS AND MARK THEM AS FAILED
-    UNTIL WE HAVE NOT MARKED ANYTHING AS PROCESSED
+		MARK AS 'PROCESSED'
+        SWEEP UP ABANDONDED 'WORKING' ITEMS AND MARK THEM AS 'FAILED'
+    UNTIL WE CANNOT *PROCEED* OR NOTHING WAS PROCESSED
     RELEASE ANY LOCKS STILL HELD
 
 This implies that each item potentially has four states: C<unprocessed>,
@@ -167,9 +170,20 @@ while L<Data::Consumer::Dir> does not.
 
 =back
 
+Every well-behaved L<Data::Consumer> subclass should include the 
+functional equivalent of the following code in its .pm file:
+
+    use base 'Data::Consumer';
+    __PACKAGE__->register();
+
+This will ensure that it can be properly loaded by 
+C<Data::Consumer->new(type=>$shortname)>. 
+
 It is also normal for a L<Data::Consumer> subclass to provide special
 methods as needed. For instance C<Data::Consumer::Dir->fh()> and
 C<Data::Consumer::MySQL->dbh()>.
+
+
 
 =head1 METHODS
 
@@ -349,10 +363,17 @@ BEGIN {
         if ( $class eq __PACKAGE__ ) {
             my $type= $opts{type}
               or confess "'type' is a mandatory named parameter for $class->new()\n";
-            eval "require $class\::$type";
-            unless ( $class= $alias2class{$type} ) {
-                confess "'type' parameter '$type' is either not installed or incorrect\n";
+            my $full = $type;
+            if (!$alias2class{$full}) {
+		if ($full!~/::/) {
+		    $full=~s/-/::/g;
+		    $full=join '::',$class,$full;
+		}
+		eval "require $full; 1"
+		    or confess "'type' parameter '$type' could not be loaded properly: $@\n";
             }
+            $class= $alias2class{$full}
+                or confess "'type' parameter '$type' mapped to '$full' which does not seem to exist\n";
         }
         my $object= bless {}, $class;
         $class->debug_warn( 5, "created new object '$object'" );

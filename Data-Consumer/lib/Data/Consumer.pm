@@ -447,9 +447,12 @@ Yves Orton, C<< <YVES at cpan.org> >>
 
 =head1 BUGS
 
-Please report any bugs or feature requests to C<bug-data-consumer at rt.cpan.org>, or through
-the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Data-Consumer>.  I will be notified, and then you'll
-automatically be notified of progress on your bug as I make changes.
+Please report any bugs or feature requests to 
+C<bug-data-consumer at rt.cpan.org>, or through the web interface at 
+L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Data-Consumer>.  
+
+I will be notified, and then you'll automatically be notified of progress on
+your bug as I make changes.
 
 =head1 SUPPORT
 

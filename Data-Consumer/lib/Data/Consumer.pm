@@ -40,6 +40,126 @@ $VERSION= '0.08';
         print "processed $id\n";
     });
 
+=head1 DESCRIPTION
+
+It is a common requirement to need to process a feed of some sort in
+a robust manner. Such a feed might be records that are inserted into
+a table, or files dropped in a delivery directory, or what have you.
+Writing a script that handles all the edge cases, like getting "stuck"
+on a failed item, and manages things like locking so that the script 
+can be parallelized can be tricky and repetitive.
+
+The aim of Data::Consumer is to provide a framework to allow writing
+such consumer type scripts as easy as writing a callback that processes
+each item. The framework handles the rest.
+
+The basic idea is that one need only define a Data::Consumer subclass
+which implements a few primitive methods which handle the required tasks,
+and then the Data::Consumer methods use those to provide a DWIMily 
+consistant interface to the end consumer.
+
+Currently Data::Consumer comes with two subclasses, Data::Consumer::MySQL 
+for handling records in a Mysql db (using the MySQL 'get_lock' function), 
+and Data::Consumer::Dir for handling a drop directory scenario (like for 
+FTP or a mail directory).
+
+Once a resource type has been defined as a Data::Consumer subclass the use
+pattern is to construct the subclass with the appropriate arguments, and
+then call consume with a callback.
+
+=head2 The Consumer Pattern
+
+The consumer pattern is where code wants to consume an atomlike resource
+piece by piece. They dont want to worry about how they got the piece, that
+should be handled by the framework. The consumer subclasses assume that the
+resource can be modeled as a queue (that there is some ordering principle by
+which they can be processed in a predictable sequence). The consume pattern
+is something like the following pseudo code:
+
+    DO
+        RESET TO THE BEGINNING OF THE QUEUE
+	WHILE WE HAVE NOT REACHED THE END OF THE QUEUE
+	    ACQUIRE NEXT ITEM TO PROCESS FROM QUEUE
+	    MARK AS WORKING
+	    PROCESS ITEM
+	    IF PROCESSING FAILED
+		MARK AS FAILED
+	    OTHERWISE 
+		MARK AS PROCESSED
+        SWEEP UP ABANDONDED 'WORKING' ITEMS AND MARK THEM AS FAILED
+    UNTIL WE HAVE NOT MARKED ANYTHING AS PROCESSED
+    RELEASE ANY LOCKS STILL HELD
+
+This implies that each item potentially has four states: 'unprocessed', 'working',
+'processed', 'failed'. In a database these might be values in a field, in a drop 
+directory scenario these would be different directories, but with all of them they 
+would normally be supplied as values to the Data::Consumer subclass being created. 
+
+=head2 Subclassing Data::Consumer 
+
+Data::Consumer can be used with any resource type that can be modeled as a queue, 
+supports some form of advisory locking mechanism, and provides a way to discriminate 
+between at least the 'unprocessed' and 'processed' state.
+
+The three routines that must be defined for a new consumer type are 
+new, reset, acquire, release, and _mark_as, _do_callback, and possibly _fix_sweeper.
+
+=over 4
+
+=item new
+
+It is almost for sure that a subclass will need to override the default constructor.
+All Data::Consumer objects are blessed hashes, and in fact you should always call
+the parents classes constructor first with:
+
+    my $self= $class->SUPER::new();
+
+=item reset
+
+This routine is used to reset the objects internal state so the next call to acquire
+will return the first available item in the queue.
+
+=item acquire
+
+This routine is to find and in some way lock the next item in the queue.
+
+=item release
+
+This routine is to release any held locks in the object. 
+
+=item _mark_as
+
+This routine is called to "mark" an item as a particular state. It should be able
+to handle user supplied values. For instance Data::Consumer::MySQL implements this
+as an update statement that mapps user supplied values to the consumer state names.
+
+Possible states are: 'unprocessed', 'working', 'processed', 'failed'
+
+=item _do_callback
+
+This routine is used to call the user supplied callback with the correct arguments.
+What arguments are appropriate for the callback are context dependent on the
+type of class. For instance in Data::Consumer::MySQL calls the callback with the arguments
+($consumer,$id,$dbh) wheras Data::Consumer::Dir calls the callback with the arguments
+($consumer,$filespec,$filehandle,$filename). The point is that the end user should be 
+passed the arguments that make sense, not necessarily the same thing for each consumer 
+type.
+
+=item _fixup_sweeper
+
+Data::Consumer has support for a "sweep-up" mode for handling things that were abandonded
+in the "working" state and moving them to the "failed" state. This is mostly a sanity check
+to prevent things like powerfailures and segfaults leaving an item in a partially or 
+unprocessed state without it being properly marked as failed. In order to do this the 
+Data::Consumer subclass actually creates a private near clone of itself. _fix_sweeper
+is called in case the normal modifications done by the base class routine are not sufficient
+for a subclass. As an example Data::Consumer::MySQL provides this hook while
+Data::Consumer::Dir does not.
+
+=back
+
+It is also normal for a Data::Consumer subclass to provide special methods as needed. For instace
+Data::Consumer::Dir->fh() and Data::Consumer::MySQL->dbh().
 
 =head1 METHODS
 

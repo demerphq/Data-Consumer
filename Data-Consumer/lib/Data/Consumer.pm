@@ -16,22 +16,20 @@ Version 0.04
 =cut
 
 $VERSION = '0.04';
-#$Debug = 1;
 
 =head1 SYNOPSIS
 
     use Data::Consumer;
-    use Data::Consumer::MySQL;
     my $consumer = Data::Consumer->new(
-        type => 'MySQL',
-	dbh => $dbh,
-	table => 'T', 
-        id_field= > 'id',
-	flag_field => 'done', 
-	unprocessed => 0, 
-	working => 1,
-	processed => 2,
-	failed => 3,
+        type        => $consumer_name,
+        %consumer_args,
+        unprocessed => $unprocessed, 
+        working     => $working,
+        processed   => $processed,
+        failed      => $failed,
+        max_passes  => $num_or_undef,
+        max_process => $num_or_undef,
+        max_elapsed => $seconds_or_undef,
     );
     $consumer->consume(sub {
         my $id = shift;
@@ -57,6 +55,48 @@ is exactly equivalent to calling
     Data::Consumer::MySQL->new(%args);
     
 except that the former will automatically require the appropriate module.
+
+On top of the subclass specific arguments there are certain arguments that
+are shared among all consumers
+
+=over 4
+
+=item max_passes => $num_or_undef
+
+Normally consume() will loop through the data set until it is exhausted. 
+By setting this parameter you can control the maximum number of iterations,
+for instance setting it to 1 will result in a single pass through the data
+per invocation. If 0 (or any other false value) is treated as meaning
+"loop until exhausted".
+
+=item max_processed => $num_or_undef
+
+Maximum number of items to process per invocation. 
+
+If set to a false value there is no limit. 
+
+=item max_failed => $num_or_undef
+
+Maximum number of failed process attempts that may occur before consume will stop. 
+If set to a false value there is no limit. Setting this to 1 will cause processing
+to stop after the first failure.
+
+=item max_elapsed => $seconds_or_undef
+
+Maximum amount of time that may have elapsed when starting a new process. If
+more than this value has elapsed then no further processing occurs. If 0 (or
+any false value) then there is no time limit.
+
+=item proceed => $code_ref
+
+This is a callback that may be used to control the looping process in consume
+via the proceed() method. It is passed a reference to a hash of statistics as 
+documented in runstats(). If it returns false then processing will terminate,
+if it returns true then processing will proceed provided none of the other
+process restrictions have been violated.
+
+=back
+
 
 =head2 CLASS->register(@alias)
 
@@ -87,7 +127,7 @@ sub debug_warn {
     my $level = shift;
     if ($Debug and $Debug>=$level) {
         warn ref($self)||$self , "\t$$\t>>> $_\n"
-        for @_;
+            for @_;
     }
 }
 
@@ -287,52 +327,93 @@ sub error   {
 }
 
 
+
 =head2 $object->consume($callback)
 
 Consumes a data resource until it is exhausted using 
 acquire(), process(), and release() as appropriate. Normally this is
 the main method used by external processes.
 
-Takes a subroutine reference as an argument. The subroutine
-will be passed arguments of the id of the item currently being
-processed, and the consumer object iteself. See process() for more 
-details.
+Before each attempt to acquire a new resource, and once at the end of
+each pass consume will call proceed() to determine if it can do so. The
+user may hook into this by specifying a callback in the constructor.
+
+=head2 $object->proceed
+
+Returns true if the conditions specified at construction time are
+satisfied and processing may proceed. Returns false otherwise. 
+
+If the user has specified a 'proceed' callback in the constructor then
+this will be executed before any other rules are applied, with a reference
+to the current runstats as an argument. If this callback returns true then
+the other rules will be applied, and only after all are satisfied will it
+return true.
+
+This most likely should not be called by an end user.
+
+=head2 $object->runstats
+
+Returns a reference to a hash of statistics about the last use
+of consume. 
 
 =cut
 
+sub runstats { $_[0]->{runstats} }
+
+sub proceed {
+    my $self = shift;
+    my $is_end_of_pass = shift;
+    my $runstats = $self->{runstats};
+    $runstats->{end_time} = time;
+    $runstats->{elapsed} = $runstats->{end_time} - $runstats->{start_time};
+    
+    if (my $cb = $self->{proceed}) {
+        return unless $cb->($self,$self->{runstats});
+    }
+    for $key ( qw(elapsed passes processed failed) ) {
+        my $max = "max_$key";
+        return if $self->{$max} && $runstats->{$key} > $self->{$max};
+    } 
+    
+    return 1
+}
+
 sub consume {
-    my $self= shift;
+    my $self = shift;
     my $callback = shift;
 
     my $passes  = 0;
 
-    my $updated = 0;
-    my $failed  = 0;
-    my ($updated_this_pass, $failed_this_pass);
-
+    my %runstats;
+    $self->{runstats}=\%runstats;
+    
+    $runstats{start} = time;
+    $runstats{$_} = 0 
+        for qw(passes updated failed updated_this_pass failed_this_pass);
+ 
     $self->reset();
-    do  { UPDATED:{
-        ++$passes;
-        $updated_this_pass = 0;
-        $failed_this_pass = 0;
-        while ( defined( my $item = $self->acquire() ) ) {
+    do  {
+        ++$runstats{passes};
+        $runstats{updated_this_pass} = $runstats{failed_this_pass} = 0;
+        while ( $self->proceed && defined( my $item = $self->acquire ) ) 
+        {
             eval { 
                 $self->process($callback);
-                $updated_this_pass++;
+                $runstats{updated_this_pass}++;
+                $runstats{updated}++;
                 1; 
             } or do {
-                $failed_this_pass++;
-                $self->error("Failed during callback handling: $@"); # quotes force string copy
+                $runstats{failed_this_pass}++;
+                $runstats{failed}++;
+                # quotes force string copy
+                $self->error("Failed during callback handling: $@"); 
             };
-            last if 'stop' eq lc(
-                $self->_check($passes,$updated,$failed,$updated_this_pass,$failed_this_pass));
-        }
-        $updated += $updated_this_pass;
-        $failed  += $failed_this_pass;
-        last if 'stop' eq lc($self->_check($passes,$updated,$failed,$updated_this_pass,$failed_this_pass));
-    } } while $updated_this_pass;
+            
+        } 
+    } while $self->proceed && $runstats{updated_this_pass};
     $self->release(); # if we still hold a lock let it go.
-    return wantarray ? ($updated,$failed) : $updated;
+    
+    return \%runstats;
 }
 
 =head1 AUTHOR

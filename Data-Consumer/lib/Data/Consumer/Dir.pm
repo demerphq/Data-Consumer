@@ -269,4 +269,4 @@ under the same terms as Perl itself.
 
 =cut
 
-1; # End of Data::Consumer::Fail
+1; # End of Data::Consumer::Dir

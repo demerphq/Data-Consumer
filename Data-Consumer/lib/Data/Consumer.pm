@@ -17,7 +17,7 @@ Version 0.01
 
 =cut
 
-$VERSION = '0.01';
+$VERSION = '0.02';
 #$Debug = 1;
 
 =head1 SYNOPSIS
@@ -98,55 +98,55 @@ sub debug_warn {
 }
 
 BEGIN {
-my %alias2class;
-my %class2alias;
-$Debug and $Debug>=5 and warn "\n";
-sub register {
-    my $class = shift;
+    my %alias2class;
+    my %class2alias;
+    $Debug and $Debug>=5 and warn "\n";
+    sub register {
+        my $class = shift;
 
-    ref $class
-        and confess "register() is a class method and cannot be called on an object\n";
-    my $pack=__PACKAGE__;
+        ref $class
+            and confess "register() is a class method and cannot be called on an object\n";
+        my $pack=__PACKAGE__;
 
-    if ($class eq $pack) {
-        return wantarray ? %alias2class : 0 + keys %alias2class;
-    }
-
-    (my $std_name=$class)=~s/^\Q$pack\E:://;
-    $std_name=~s/::/-/g;
-
-    my @failed;
-    for my $name (map { lc $_ } $class, $std_name, @_) {
-        if ($alias2class{$name} and $alias2class{$name} ne $class) {
-            push @failed,$name;
-            next;
+        if ($class eq $pack) {
+            return wantarray ? %alias2class : 0 + keys %alias2class;
         }
-        __PACKAGE__->debug_warn(5,"registered '$name' as an alias of '$class'");
-        $alias2class{$name} = $class;
-        $class2alias{$class}{$name}=$class;
-    }
-    @failed and 
-        confess "Failed to register aliases for '$class' as they are already used\n",
-                join("\n",map { "\t'$_' is already assigned to '$alias2class{lc($_)}'"} @failed),
-                "\n";
-    return wantarray ? %{$class2alias{$class}} : 0 + keys %{$class2alias{$class}};
-}
 
-sub new {
-    my ($class, %opts)= @_;
-    ref $class 
-        and confess "new() is a class method and cannot be called on an object\n";
+        (my $std_name=$class)=~s/^\Q$pack\E:://;
+        $std_name=~s/::/-/g;
 
-    if ($class eq __PACKAGE__) {
-        my $type = $opts{type}
-            or confess "'type' is a mandatory named parameter for $class->new()\n";
-        $class = $alias2class{lc($type)}
-            or confess "'type' parameter '$type' is not a known alias of any registered type currently loaded\n";
+        my @failed;
+        for my $name (map { lc $_ } $class, $std_name, @_) {
+            if ($alias2class{$name} and $alias2class{$name} ne $class) {
+                push @failed,$name;
+                next;
+            }
+            __PACKAGE__->debug_warn(5,"registered '$name' as an alias of '$class'");
+            $alias2class{$name} = $class;
+            $class2alias{$class}{$name}=$class;
+        }
+        @failed and 
+            confess "Failed to register aliases for '$class' as they are already used\n",
+                    join("\n",map { "\t'$_' is already assigned to '$alias2class{lc($_)}'"} @failed),
+                    "\n";
+        return wantarray ? %{$class2alias{$class}} : 0 + keys %{$class2alias{$class}};
     }
-    my $object = bless {}, $class;
-    $class->debug_warn(5,"created new object '$object'");
-    return $object
-}
+
+    sub new {
+        my ($class, %opts)= @_;
+        ref $class 
+            and confess "new() is a class method and cannot be called on an object\n";
+
+        if ($class eq __PACKAGE__) {
+            my $type = $opts{type}
+                or confess "'type' is a mandatory named parameter for $class->new()\n";
+            $class = $alias2class{lc($type)}
+                or confess "'type' parameter '$type' is not a known alias of any registered type currently loaded\n";
+        }
+        my $object = bless {}, $class;
+        $class->debug_warn(5,"created new object '$object'");
+        return $object
+    }
 }
 
 =head2 $object->last_id
@@ -159,7 +159,7 @@ attempt to acquire data failed because none was available.
 =cut
 
 sub last_id {
-    my $self=shift;
+    my $self = shift;
     return $self->{last_id};
 }
 
@@ -188,25 +188,25 @@ Allowed types are 'unprocessed', 'working', 'processed', 'failed'
 sub _mark_as { confess "must be overriden" }
 BEGIN {
     my (%valid,@valid);
-    @valid =qw ( unprocessed working processed failed );
-    @valid{@valid}=(1..@valid);
+    @valid = qw ( unprocessed working processed failed );
+    @valid{@valid} = (1..@valid);
 
-sub mark_as {
-    my $self = shift @_;
-    my $key = shift @_;
-    
-    $valid{$key} 
-        or confess "Unknown type in mark_as(), valid options are ", 
-              join(", ", map { "'$_'" } @valid),
-              "\n";
+    sub mark_as {
+        my $self = shift @_;
+        my $key = shift @_;
+        
+        $valid{$key} 
+            or confess "Unknown type in mark_as(), valid options are ", 
+                  join(", ", map { "'$_'" } @valid),
+                  "\n";
 
-    my $id = @_ ? shift @_ : $self->last_id;
-    defined $id 
-        or confess "Nothing acquired to be marked as '$key' in mark_as.\n";
+        my $id = @_ ? shift @_ : $self->last_id;
+        defined $id 
+            or confess "Nothing acquired to be marked as '$key' in mark_as.\n";
 
-    return unless $self->{$key};
-    return $self->_mark_as($key,$id);
-}
+        return unless $self->{$key};
+        return $self->_mark_as($key,$id);
+    }
 }
 
 =head2 $object->process($callback)
@@ -263,18 +263,14 @@ sub acquire { confess "abstract method must be overriden by subclass\n"; }
 sub release { confess "abstract method must be overriden by subclass\n"; }
 
 
-=begin for_developer
-
 =head2 _check
 
 Calls the 'check' callback if the user has provided one.
 
-=head2 _error
+=head2 error
 
 Calls the 'error' callback if the user has provided one, otherwise calls 
 confess().
-
-=end for_developer
 
 =cut
 
@@ -286,10 +282,10 @@ sub _check   {
     }
 }
 
-sub _error   { 
+sub error   { 
     my $self=shift;
-    if ($self->{_error}) {
-        $self->{_error}->(@_);
+    if ($self->{error}) {
+        $self->{error}->(@_);
     } else {
         confess @_
     }
@@ -331,9 +327,10 @@ sub consume {
                 1; 
             } or do {
                 $failed_this_pass++;
-                $self->_error("Failed during callback handling: $@"); # quotes force string copy
+                $self->error("Failed during callback handling: $@"); # quotes force string copy
             };
-            
+            last if 'stop' eq lc(
+                $self->_check($passes,$updated,$failed,$updated_this_pass,$failed_this_pass));
         }
         $updated += $updated_this_pass;
         $failed  += $failed_this_pass;

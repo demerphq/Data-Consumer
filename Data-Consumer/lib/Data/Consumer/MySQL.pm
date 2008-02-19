@@ -1,4 +1,4 @@
-package Data::Consumer::Mysql;
+package Data::Consumer::MySQL;
 
 use warnings;
 use strict;

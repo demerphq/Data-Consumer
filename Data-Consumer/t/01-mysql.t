@@ -5,7 +5,7 @@ use warnings;
 use DBI;
 
 my $debug = 0;
-
+#exit;
 our %process_state;
 if (!%process_state) {
     %process_state = (

@@ -106,7 +106,7 @@ sub new {
     if ($opts{root}) {
         my ($v,$p)= File::Spec->splitpath($opts{root},'nofile');
         for my $type (@keys) {
-            $opts{$type} ||= File::Spec->catpath($v,File::Spec->catdir($p,$type));
+            $opts{$type} ||= File::Spec->catpath($v,File::Spec->catdir($p,$type),'');
         }
     }
     ($opts{unprocessed} and $opts{processed}) or 
@@ -181,7 +181,11 @@ sub _cf { # cat file
 
 sub _do_callback {
     my ($self,$callback) = @_;
+    local $Data::Consumer::Error;
     if (eval { $callback->($self,@{$self}{qw(lock_spec lock_fh last_id)}); 1; } ) {
+        if ($Data::Consumer::Error) {
+            return "Callback reports an error: $Data::Consumer::Error"
+        }
         return;
     } else {
         return "Callback failed: $@";

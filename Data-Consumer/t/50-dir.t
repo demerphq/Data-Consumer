@@ -3,8 +3,10 @@ use Data::Consumer::Dir;
 use strict;
 use warnings;
 use DBI;
+use File::Path;
+use Data::Dumper;
 
-my $debug = 1;
+my $debug = 0;
 
 our %process_state;
 if (!%process_state) {
@@ -38,7 +40,7 @@ do {
 
 if ( $child ) {
     $debug  and $debug and Data::Consumer->debug_warn("Using test more\n");
-    eval 'use Test::More tests => 2; ok(1); 1;' 
+    eval 'use Test::More tests => 4; ok(1); 1;' 
         or die $@;
 } else {
    sleep(1);
@@ -54,7 +56,8 @@ my $consumer = Data::Consumer::Dir->new(
 );
 
 $consumer->consume(sub {
-    my ($consumer,$spec,$fh) = @_; 
+    my ($consumer,$spec,$fh,$file) = @_; 
+    #die if $file == 25;
     $debug 
         and $consumer->debug_warn(0,"*** processing '$spec'"); 
     print $fh '1';
@@ -65,12 +68,34 @@ $consumer->consume(sub {
 if ( $child ) {
     use POSIX ":sys_wait_h";
     while (@child) {
-        @child=grep { waitpid($_,WNOHANG)==0 } @child;
+        @child = grep { waitpid($_,WNOHANG)==0 } @child;
         sleep(1);
     }
-    # check files and file sizes here      
-} else {
-    undef $consumer;
-}
+    # check files and file sizes here
+    use File::Find; 
+    my %type;
+    my $error=0;
+    find({
+            wanted => sub{ 
+                -f $_ or return;
+                $File::Find::dir=~m!/([^/]+)$! or return;                
+                ($type{$1}{$_} = -s $_) == 1 or ++$error;
+            }, 
+            untaint => 1, 
+        },'t/dir-test');
+    my @processed = sort {$a <=> $b} keys %{$type{processed}||{}};
+    my @expect = ( 1..50 );
+    my $ok = 0;
+
+    # think of '!!' as the boolean cast operator.
+    $ok += !!is( $error, 0, 'count of files that arent single byte should be 0');
+    $ok += !!is( "@{[sort keys %type]}", "processed", 'should be only processed');
+    $ok += !!is( "@processed", "@expect", 'expected processed files' );
+    $ok == 3 or diag(Dumper(\%type));
+} 
 
 1;
+
+
+
+

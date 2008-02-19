@@ -26,11 +26,11 @@ Data::Consumer::Dir - Data::Consumer implementation for a directory of files res
 
 =head1 VERSION
 
-Version 0.04
+Version 0.06
 
 =cut
 
-$VERSION = '0.04';
+$VERSION = '0.07';
 
 
 =head1 SYNOPSIS
@@ -63,17 +63,30 @@ arguments must be defined. Will die if the directories do not exist unless the
 
 Directory within which unprocessed files will be found.
 
+May also be a callback which is responsible for marking the item as unprocessed.
+This will be called with the arguments ($consumer,'unprocessed',$spec,$fh,$name)
+
 =item working => $path_spec
 
 Files will be moved to this directory prior to be processed.
+
+May also be a callback which is responsible for marking the item as working.
+This will be called with the arguments ($consumer,'working',$spec,$fh,$name)
 
 =item processed => $path_spec
 
 Once sucessfully processed the files will be moved to this directory.
 
+May also be a callback which is responsible for marking the item as processed.
+This will be called with the arguments ($consumer,'processed',$spec,$fh,$name)
+
 =item failed => $path_spec
 
 If processing fails then the files will be moved to this directory.
+
+May also be a callback which is responsible for marking the item as failed.
+This will be called with the arguments ($consumer,'failed',$spec,$fh,$name)
+
 
 =item root => $path_spec
 
@@ -233,6 +246,12 @@ sub _mark_as {
     my ($self, $key, $id)= @_;
 
     if ($self->{$key}) {
+        if (ref $self->{$key}) { 
+            # assume it must be a callback
+            $self->debug_warn(5,"executing mark_as callback for '$key'");
+            $self->{$key}->($self,$key,$self->{lock_spec},$self->{lock_fh},$self->{last_id});
+            return;
+        }    
         my $spec = _cf($self->{$key},$self->{last_id});
         rename $self->{lock_spec}, $spec
             or confess "$$: Failed to rename '$self->{lock_spec}' to '$spec':$!";
@@ -240,6 +259,7 @@ sub _mark_as {
     }
 }
 
+ 
 sub DESTROY {
     my $self = shift;
     $self->release() if $self

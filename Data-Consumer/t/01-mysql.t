@@ -7,6 +7,7 @@ use DBI;
 my $debug = $ENV{TEST_DEBUG};
 #exit;
 our @fake_error;
+our @expect_fail;
 our %process_state;
 if (!%process_state) {
     %process_state = (
@@ -76,7 +77,7 @@ do {
 
 if ( $child ) {
     $debug  and $debug and Data::Consumer->debug_warn("Using test more\n");
-    eval 'use Test::More tests => 2; ok(1); 1;' 
+    eval "use Test::More tests => @{[2+@expect_fail]}; ok(1); 1;" 
         or die $@;
 } else {
    sleep(1);
@@ -113,9 +114,13 @@ if ( $child ) {
         undef, 1, $process_state{processed},
     );
     my $num = 0 + @$recs;
-    $debug and $consumer->debug_warn(0,"Found $num incorrectly processed items.\n");
-    is($num, 0, 'should be 0 incorrectly processed items')
-        or do { warn map {  "[@{$recs->[$_]}] " . ( 7 == $_ % 8 ? "\n" : "" ) } (0..$#$recs)  };
+    my $expect = 0+@expect_fail;
+    $debug and $consumer->debug_warn($expect,"Found $num incorrectly processed items expected $expect.\n");
+    my $ok=!!is($num, $expect, "should be $expect incorrectly processed items");
+    foreach my $idx (0..$#expect_fail) {
+        $ok+=!!is("@{$recs->[$idx]}","@{$expect_fail[$idx]}");
+    }
+    $ok or do { warn map {  "[@{$recs->[$_]}] " . ( 7 == $_ % 8 ? "\n" : "" ) } (0..$#$recs)  };
 } else {
     undef $consumer;
 }

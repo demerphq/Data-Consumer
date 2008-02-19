@@ -11,11 +11,11 @@ Data::Consumer - Repeatedly consume a data resource in a robust way
 
 =head1 VERSION
 
-Version 0.05
+Version 0.07
 
 =cut
 
-$VERSION = '0.05';
+$VERSION = '0.07';
 
 =head1 SYNOPSIS
 
@@ -91,6 +91,14 @@ any false value) then there is no time limit.
 
 This is a callback that may be used to control the looping process in consume
 via the proceed() method. See the documentation of consume() and proceed()
+
+=item sweep => $bool
+
+If this parameter is true, and there are four modes defined (unprocessed,
+working, processed, failed) then consume will perform a "sweep up" after
+every pass, which is responsible for moving "abandonded" files from the 
+working directory (such as from a previous process that segfaulted during
+processing). Generally this should not be necessary.
 
 =back
 

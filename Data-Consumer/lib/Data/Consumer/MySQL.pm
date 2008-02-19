@@ -22,11 +22,11 @@ Data::Consumer::MySQL - Data::Consumer implementation for a mysql database table
 
 =head1 VERSION
 
-Version 0.05
+Version 0.07
 
 =cut
 
-$VERSION = '0.05';
+$VERSION = '0.07';
 
 
 =head1 SYNOPSIS
@@ -91,12 +91,20 @@ The value of the flag_field which indicates that an item is not processed.
 
 Optional.
 
+May also be a callback which is responsible for marking the item as unprocessed.
+This will be called with the arguments ($consumer,'unprocessed',$id,$dfh)
+
+
 =item working => 1
 
 The value of the flag_field which indicates that an item is currently being
 processed.
 
 Optional.
+
+May also be a callback which is responsible for marking the item as working.
+This will be called with the arguments ($consumer,'working',$id,$dfh)
+
 
 =item processed => 2
 
@@ -105,11 +113,17 @@ processed. If not provided defaults to 1.
 
 Optional.
 
+May also be a callback which is responsible for marking the item as processed.
+This will be called with the arguments ($consumer,'processed',$id,$dfh)
+
 =item failed => 3
 
 The value of the flag_field which indicates that processing of an item has failed.
 
 Optional.
+
+May also be a callback which is responsible for marking the item as failed.
+This will be called with the arguments ($consumer,'failed',$id,$dfh)
 
 =item init_id => 0
 
@@ -321,6 +335,12 @@ sub _mark_as {
     my ($self, $key,$id)=@_;
 
     if ($self->{$key}) {
+        if (ref $self->{$key}) { 
+            # assume it must be a callback
+            $self->debug_warn(5,"executing mark_as callback for '$key'");
+            $self->{$key}->($self,$key,$self->{last_id},$self->{dbh});
+            return;
+        }
         $self->debug_warn(5,"marking '$id' as '$key'");
         my $res = $self->{dbh}->do($self->{update_sql},undef,@{$self->{update_args}||[]},$self->{$key},$id)
             or $self->error("Failed to execute '$self->{update_sql}' with args '$self->{$key}','$id': " . 

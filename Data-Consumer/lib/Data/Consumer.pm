@@ -146,7 +146,7 @@ C<failed>.
 This routine is used to call the user supplied callback with the correct
 arguments.  What arguments are appropriate for the callback are context
 dependent on the type of class. For instance in L<Data::Consumer::MySQL>
-calls the callback with the arguments C<($consumer, $id, $dbh)> wheras
+calls the callback with the arguments C<($consumer, $id, $dbh)> whereas
 L<Data::Consumer::Dir> calls the callback with the arguments
 C<($consumer, $filespec, $filehandle, $filename)>. The point is that the
 end user should be passed the arguments that make sense, not necessarily
@@ -434,9 +434,19 @@ C<$callback>. If the C<$callback> dies then the item is marked as
 C<failed>, otherwise the item is marked as C<processed> once the
 C<$callback> returns. The return value of the C<$callback> is ignored.
 
-C<$callback> will be called with two arguments, the first being the id
-of the item being processed, the second being the consumer object
-itself.
+C<$callback> will be called with at least two arguments, the first being
+the $consumer object itself, and the second being an identifier for the
+current record. Normally additional, likely to be useful, arguments are 
+provided as well, on a per subclass basis. For example 
+L<Data::Consumer::MySQL> will pass in the consumer object, the id of the to 
+be processed record, and a copy of the consumers database handle as well for 
+convenience. On the other hand L<Data::Consumer::Dir> will pass in the 
+consumer object, followed by a filespecification for the file to be 
+processed, an open filehandle to the file, and the filename itself (with 
+no path).
+
+For further details always consult the relevent subclasses documentation for
+C<process()>
 
 =cut
 

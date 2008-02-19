@@ -60,7 +60,7 @@ Constructor for a L<Data::Consumer::Dir> instance.
 
 Either the C<root> option must be provided or both C<unprocessed> and
 C<processed> arguments must be defined. Will die if the directories do
-not exist unless the C<create> is defined.
+not exist unless the C<create> option is set to a true value.
 
 =over 4
 
@@ -113,7 +113,7 @@ If C<create_mode> is specified then the directories will be created with that mo
 =item open_mode => $mode_str
 
 In order to lock a file a filehandle must be opened, normally in
-read-only mode (C<<>), however it may be useful to open with other
+read-only mode (C<< < >>), however it may be useful to open with other
 modes.
 
 =back

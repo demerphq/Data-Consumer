@@ -191,20 +191,15 @@ sub release {
 }
 
 sub _mark_as {
-    my ($self, $key,$id)=@_;
+    my ($self, $key, $id)= @_;
 
     if ($self->{$key}) {
-        
+        my $spec = _cf($self->{$key},$self->{last_id});
+        rename $self->{lock_spec}, $spec
+            or confess "Failed to rename '$self->{lock_spec}' to '$spec':$!";
+        $self->{lock_spec} = $spec;
     }
 }
-
-=head2 $object->dbh
-
-returns the database handle the object is using to communicate to the db with.
-
-=cut
-
-sub dbh { $_[0]->{dbh} }
 
 sub DESTROY {
     my $self = shift;

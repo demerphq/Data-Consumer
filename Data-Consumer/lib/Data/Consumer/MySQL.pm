@@ -26,11 +26,11 @@ Data::Consumer::MySQL - Data::Consumer implementation for a mysql database table
 
 =head1 VERSION
 
-Version 0.08
+Version 0.09
 
 =cut
 
-$VERSION= '0.08';
+$VERSION= '0.09';
 
 =head1 SYNOPSIS
 
@@ -310,19 +310,19 @@ sub acquire {
     my $dbh= $self->{dbh};
 
     $self->reset if !defined $self->{last_id};
-
-    my ($id)= $dbh->selectrow_array( $self->{select_sql}, undef, @{ $self->{select_args} || [] },
-        $self->{last_id} );
-    if ( defined $id ) {
-        $self->{last_lock}= $id;
-        $self->debug_warn( 5, "acquired '$id'" );
-    } else {
-        $self->debug_warn( 5, "acquire failed -- resource has been exhausted" );
-    }
-
-    $self->{last_id}= $id;
-
-    return $id;
+    do {
+	my ($id)= $dbh->selectrow_array( $self->{select_sql}, undef, @{ $self->{select_args} || [] },
+	    $self->{last_id} );
+	if ( defined $id ) {
+	    $self->{last_lock}= $id;
+	    $self->debug_warn( 5, "acquired '$id'" );
+	} else {
+	    $self->debug_warn( 5, "acquire failed -- resource has been exhausted" );
+	}
+    
+	$self->{last_id}= $id;
+    } while $self->is_ignored($self->{last_id});
+    return $self->{last_id};
 }
 
 sub release {
@@ -393,7 +393,7 @@ your bug as I make changes.
 
 =head1 ACKNOWLEDGEMENTS
 
-Igor Sutton for ideas, testing and support.
+Igor Sutton <IZUT@cpan.org> for ideas, testing and support.
 
 =head1 COPYRIGHT & LICENSE
 

@@ -30,11 +30,11 @@ Data::Consumer::Dir - Data::Consumer implementation for a directory of files res
 
 =head1 VERSION
 
-Version 0.08
+Version 0.09
 
 =cut
 
-$VERSION= '0.08';
+$VERSION= '0.09';
 
 =head1 SYNOPSIS
 
@@ -225,6 +225,7 @@ sub acquire {
     my $files= $self->{files};
     while (@$files) {
         my $file= shift @$files;
+        next if $self->is_ignored($file);
         my $spec= _cf( $self->{unprocessed}, $file );
         my $fh;
         if ( sysopen $fh, $spec, $self->{open_mode} and flock( $fh, LOCK_EX | LOCK_NB ) ) {
@@ -308,6 +309,8 @@ I will be notified, and then you'll automatically be notified of progress on
 your bug as I make changes.
 
 =head1 ACKNOWLEDGEMENTS
+
+Igor Sutton <IZUT@cpan.org> for ideas, testing and support
 
 =head1 COPYRIGHT & LICENSE
 

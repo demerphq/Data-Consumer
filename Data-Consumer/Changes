@@ -9,6 +9,9 @@ Revision history for Data-Consumer
         files). Spent some time on the make process to have configurable
         mysql arguments, which default to off for automated processed.
 
+0.09
+        Added support for 'leave', 'ignore', 'fail' and 'halt'. They probably
+        could be better documented and tested.
 
 
 

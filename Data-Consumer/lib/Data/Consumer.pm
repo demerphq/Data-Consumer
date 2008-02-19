@@ -15,11 +15,11 @@ Data::Consumer - Repeatedly consume a data resource in a robust way
 
 =head1 VERSION
 
-Version 0.08
+Version 0.09
 
 =cut
 
-$VERSION= '0.08';
+$VERSION= '0.09';
 
 =head1 SYNOPSIS
 
@@ -128,7 +128,9 @@ will return the first available item in the queue.
 
 =item acquire
 
-This routine is to find and in some way lock the next item in the queue.
+This routine is to find and in some way lock the next item in the queue. It should ensure
+that it call is_ignored() on each item to verify the item has not been requested to be 
+ignored.
 
 =item release
 
@@ -139,7 +141,7 @@ This routine is to release any held locks in the object.
 This routine is called to "mark" an item as a particular state. It
 should be able to handle user supplied values. For instance
 L<Data::Consumer::MySQL> implements this as an update statement that
-mapps user supplied values to the consumer state names.
+maps user supplied values to the consumer state names.
 
 Possible states are: C<unprocessed>, C<working>, C<processed>,
 C<failed>.
@@ -177,11 +179,11 @@ functional equivalent of the following code in its .pm file:
     __PACKAGE__->register();
 
 This will ensure that it can be properly loaded by 
-C<Data::Consumer->new(type=>$shortname)>. 
+C<< Data::Consumer->new(type=>$shortname) >>. 
 
 It is also normal for a L<Data::Consumer> subclass to provide special
-methods as needed. For instance C<Data::Consumer::Dir->fh()> and
-C<Data::Consumer::MySQL->dbh()>.
+methods as needed. For instance C<< Data::Consumer::Dir->fh() >> and
+C<< Data::Consumer::MySQL->dbh() >>.
 
 
 
@@ -466,6 +468,20 @@ consumer object, followed by a filespecification for the file to be
 processed, an open filehandle to the file, and the filename itself (with 
 no path).
 
+The callback may call the methods 'leave', 'ignore', 'fail', and 'halt' on 
+the consumer object before returning, typically by doing something like
+
+    return $consumer->ignore;
+
+this allows the callback to send specific signals to consume, specifically
+
+    leave  : return the item to the unprocessed state after the callback returns.
+    ignore : return the item to the unprocessed state after the callback returns
+             and never attempt to process it again with this consumer object.
+    fail   : same result as dieing in a callback, except without throwing an exception
+             in the situation where there might be $SIG{__DIE__} hooks to worry about.
+    halt   : stop the consume() process after this has been executed
+
 For further details always consult the relevent subclasses documentation for
 C<process()>
 
@@ -479,13 +495,132 @@ sub process {
       or $self->error("Undefined last_id. Nothing acquired yet?");
     $self->mark_as('working');
     local $Cmd;
-    if ( my $error= $self->_do_callback($callback) ) {
+    delete $self->{defer_leave};
+    my $error= $self->_do_callback($callback);
+    $error ||= $self->{fail};
+    if ( $error ) {
         $self->mark_as('failed');
         $self->error($error);
     } else {
-        $self->mark_as('processed');
+        if ($self->{defer_leave}) {
+            $self->mark_as('unprocessed');
+        } else {
+            $self->mark_as('processed');
+        }
     }
     return 1;
+}
+
+
+=head2 $consumer->leave()
+
+Sometimes its useful to defer processing. This method when called
+from within a consume/process callback will result in the 
+item being marked as 'unprocessed' after the callback returns
+(so long as it does not die).
+
+Typically this is invoked as
+
+    return $consumer->leave;
+
+from withing a consume/process callback.
+
+Returns $consumer. Will die if not 'unprocessed' state is defined. 
+
+=cut
+
+sub leave {
+    my $self= shift;
+    confess("Can't leave as 'unprocessed' is undefined!") if !$self->{unprocessed};
+    $self->{defer_leave}++;
+    return $self;
+}
+
+=head2 $consumer->ignore(@list)
+
+This can used to cause acquire to ignore each item in @list. 
+
+If @list is empty then it is assumed it is being called from
+within consume/process and and marks the currently acquired item
+as ignored and calls $consumer->leave().
+
+Returns $consumer. Will die if not 'unprocessed' state is defined. 
+
+=cut
+
+
+sub ignore {
+    my $self= shift;
+    if (@_) {
+        for my $id (@_) {
+            $self->{ignore}{$id}++;
+        }
+    } else {
+        my $id= $self->last_id;
+        $self->{ignore}{$id}++;
+        $self->leave;
+    }
+    return $self;
+}
+
+=head2 $consumer->fail($message)
+
+Same as doing die($message) from within a consume/process callback except 
+that no exception is thrown (no $SIG{__DIE__} callbacks are invoked) and 
+the error is defered until the callback actually returns.
+
+Typically used as
+
+    return $consumer->fail;
+
+from within a consumer() callback.
+
+Returns the $consumer object.
+
+=cut
+
+sub fail {
+    my $self= shift;
+    $self->{fail}= shift;
+    return $self;
+}
+
+=head2 $consumer->halt()
+
+Causes consume() to halt processing and exit once
+the callback returns. Typically invoked like
+
+    return $consumer->halt;
+
+or
+
+    return $consumer->fail->halt;
+
+Returns the consumer object.
+
+=cut
+
+
+sub halt {
+    my $self= shift;
+    $self->{halt}++;
+    return $self;
+}
+
+
+
+=head2 $object->is_ignored($id)
+
+Returns true if an item has been set to be ignored. If $id is omitted
+defaults to last_id
+
+=cut
+
+sub is_ignored { 
+    my $self= shift;
+    my $id= @_ ? shift @_ : $self->last_id;
+    return if !defined $id;
+    return $self->{ignore}{$id} ? 1 : 0
 }
 
 =head2  $object->reset()
@@ -584,7 +719,7 @@ sub proceed {
         my $max= "max_$key";
         return if $self->{$max} && $runstats->{$key} > $self->{$max};
     }
-
+    return if $self->{halt};
     return 1;
 }
 
@@ -624,6 +759,7 @@ sub consume {
           && $runstats{updated_this_pass};
 
     # if we still hold a lock let it go.
+    delete $self->{halt};
     $self->release;
     return \%runstats;
 }
@@ -694,7 +830,7 @@ L<http://search.cpan.org/dist/Data-Consumer>
 
 =head1 ACKNOWLEDGEMENTS
 
-Igor Sutton for ideas, testing and support.
+Igor Sutton <IZUT@cpan.org> for ideas, testing and support
 
 =head1 COPYRIGHT & LICENSE
 

@@ -88,10 +88,10 @@ my $consumer = Data::Consumer::Mysql->new(
 );
 
 $consumer->consume(sub { 
-    my ($id,$consumer) = @_; 
+    my ($consumer,$id,$dbh) = @_; 
     $debug  and $consumer->debug_warn(0,"*** processing '$id'"); 
     sleep(1);
-    $consumer->dbh->do("UPDATE `$table` SET `n` = `n` + 1 WHERE `id` = ?", undef, $id);
+    $dbh->do("UPDATE `$table` SET `n` = `n` + 1 WHERE `id` = ?", undef, $id);
 });
 
 

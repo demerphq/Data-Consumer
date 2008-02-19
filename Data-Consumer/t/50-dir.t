@@ -13,12 +13,12 @@ if (!%process_state) {
         create => 1,   
     );
 }
-
-mkdir 't/dir-test' and mkdir 't/dir-test/working' if !-d 't/dir-test/working';
+my $wrk='t/dir-test/unprocessed';
+mkdir 't/dir-test' and mkdir $wrk if !-d $wrk;
 for (1..50) {
-    open my $fh,">","t/dir-test/$_" 
-        or die "failed to create test file t/dir-test/$_:$!";
-    print $fh $_;
+    open my $fh,">","$wrk/$_" 
+        or die "failed to create test file $wrk/$_:$!";
+    # 0 byte file
     close $fh;
 }
 
@@ -49,12 +49,15 @@ $debug and Data::Consumer->debug_warn(0,"starting processing\n");
 $Data::Consumer::Debug=5 if $debug;
 
 my $consumer = Data::Consumer::Dir->new(
+    open_mode => '>>',    
     %process_state,
 );
 
-$consumer->consume(sub { 
-    my ($id,$consumer) = @_; 
-    $debug  and $consumer->debug_warn(0,"*** processing '$id'"); 
+$consumer->consume(sub {
+    my ($consumer,$spec,$fh) = @_; 
+    $debug 
+        and $consumer->debug_warn(0,"*** processing '$spec'"); 
+    print $fh '1';
     sleep(1);
 });
 
@@ -65,7 +68,7 @@ if ( $child ) {
         @child=grep { waitpid($_,WNOHANG)==0 } @child;
         sleep(1);
     }
-        
+    # check files and file sizes here      
 } else {
     undef $consumer;
 }

@@ -269,6 +269,15 @@ sub reset {
     return $self;
 }
 
+sub _do_callback {
+    my ($self,$callback) = @_;
+    if (eval { $callback->($self,@{$self}{qw(last_id dbh)}); 1; } ) {
+        return;
+    } else {
+        return "Callback failed: $@";
+    }
+}
+
 
 sub acquire { 
     my $self = shift;

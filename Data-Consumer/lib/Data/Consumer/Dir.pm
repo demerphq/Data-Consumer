@@ -8,6 +8,7 @@ use warnings FATAL => 'all';
 use base 'Data::Consumer';
 use File::Spec;
 use File::Path;
+use Fcntl;
 use Fcntl ':flock';
 
 BEGIN {
@@ -83,10 +84,15 @@ with the other options
 
 =item create => $bool
 
-=item create_mode => $bool
+=item create_mode => $mode_flags
 
 If true then directories specified by not existing will be created. 
 If create_mode is specified then the directories will be created with that mode.
+
+=item open_mode => $mode_str
+
+In order to lock a file a filehandle must be opened, normally in read-only mode
+('<'), however it may be useful to open with other modes. 
 
 =back
 
@@ -113,7 +119,21 @@ sub new {
             mkpath($opts{$_}, $Data::Consumer::Debug, $opts{create_mode} || ());
         }
     }
-
+    if ($opts{open_mode}) {
+        my %m = ( 
+            '<' => O_RDONLY, 
+            '+<' => O_RDWR, 
+            '>>' => O_APPEND|O_WRONLY,
+            '+>>' => O_APPEND|O_RDWR,
+         );
+        $_=$_|O_NONBLOCK for values %m;
+        exists $m{$opts{open_mode}}
+            or confess "Illegal open mode '$opts{open_mode}' legal options are '<', '+<' and '>>'\n";
+        $opts{open_mode} = $m{$opts{open_mode}};    
+    } else {
+        $opts{open_mode} = O_RDONLY|O_NONBLOCK;
+    }   
+    
     %$self = %opts;
     return $self;
 }
@@ -141,11 +161,13 @@ Normally there is no need to call this directly.
 
 sub reset { 
     my $self = shift;
-    $self->debug_warn(5,"reset");
+    $self->debug_warn(5,"reset (scanning $self->{unprocessed})");
     $self->release();
     opendir my $dh, $self->{unprocessed} 
         or die "Failed to opendir '$self->{unprocessed}': $!";
-    my @files = sort grep { -f $_ } readdir($dh);
+    my @files = map {/(.*)/s && $1 } readdir($dh);
+    #print for @files;
+    @files = sort grep { -f _cf($self->{unprocessed},$_) } @files;
     $self->{files}=\@files;
     return $self;
 }
@@ -155,6 +177,15 @@ sub _cf { # cat file
 
     my ($v,$p)= File::Spec->splitpath($r,'nofile');
     return File::Spec->catpath($v,$p,$f);
+}
+
+sub _do_callback {
+    my ($self,$callback) = @_;
+    if (eval { $callback->($self,@{$self}{qw(lock_spec lock_fh last_id)}); 1; } ) {
+        return;
+    } else {
+        return "Callback failed: $@";
+    }
 }
 
 sub acquire { 
@@ -168,7 +199,7 @@ sub acquire {
         my $file = shift @$files;
         my $spec = _cf($self->{unprocessed},$file);
         my $fh;
-        if (open $fh,"<",$spec and flock($fh,LOCK_EX|LOCK_NB)) {
+        if (sysopen $fh,$spec,$self->{open_mode} and flock($fh,LOCK_EX|LOCK_NB)) {
             $self->{lock_fh} = $fh;
             $self->{lock_spec} = $spec;
             $self->debug_warn(5,"acquired '$file': $spec");
@@ -196,7 +227,7 @@ sub _mark_as {
     if ($self->{$key}) {
         my $spec = _cf($self->{$key},$self->{last_id});
         rename $self->{lock_spec}, $spec
-            or confess "Failed to rename '$self->{lock_spec}' to '$spec':$!";
+            or confess "$$: Failed to rename '$self->{lock_spec}' to '$spec':$!";
         $self->{lock_spec} = $spec;
     }
 }

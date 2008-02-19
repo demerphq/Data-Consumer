@@ -163,8 +163,6 @@ sub last_id {
     return $self->{last_id};
 }
 
-=begin for_development
-
 =head2 $object->_mark_as($type,$id)
 
 ** Must be overriden **
@@ -178,8 +176,6 @@ that $type will be one of
 
 and that $object->{$type} will be true value, and that $id will be from 
 the currently acquired item.
-
-=end for_development
 
 =head2 $object->mark_as($type)
 
@@ -225,6 +221,8 @@ being processed, the second being the consumer object itself.
 
 =cut
 
+
+
 sub process {
     my $self = shift;
     my $callback = shift;
@@ -232,12 +230,11 @@ sub process {
     defined $id 
         or $self->error("Undefined last_id. Nothing acquired yet?");
     $self->mark_as('working');
-    if ( eval { $callback->($id,$self);  1; } ) {
-        $self->mark_as('processed');
-    } else {
-        my $error = "Processing failed: $@";
+    if ( my $error = $self->_do_callback($callback) ) {
         $self->mark_as('failed');
         $self->error($error);
+    } else {
+        $self->mark_as('processed');
     }
     return 1;
 }

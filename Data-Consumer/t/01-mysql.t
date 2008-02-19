@@ -11,8 +11,6 @@ our @connect_args;
 our $table;
 
 my $conf_file = 'mysql.pldat';
-use Cwd;
-warn cwd;
 if (-e $conf_file) {
     # eval @connect_args into existance
     my $ok = do $conf_file;

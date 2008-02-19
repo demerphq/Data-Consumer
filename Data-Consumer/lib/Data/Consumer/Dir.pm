@@ -39,26 +39,28 @@ $VERSION= '0.08';
 =head1 SYNOPSIS
 
     use Data::Consumer::Dir;
+
     my $consumer = Data::Consumer::Dir->new(
-        root   => '/some/dir',
-        create => 1,
+        root      => '/some/dir',
+        create    => 1,
         open_mode => '+<',
     );
-    $consumer->consume(sub {
+
+    $consumer->consume( sub {
         my $id = shift;
         print "processed $id\n";
-    });
+    } );
 
 
 =head1 FUNCTIONS
 
 =head2 CLASS->new(%opts)
 
-Constructor for a Data::Consumer::Dir instance.
+Constructor for a L<Data::Consumer::Dir> instance.
 
-Either the 'root' option must be provided or both 'unprocessed' and 'processed'
-arguments must be defined. Will die if the directories do not exist unless the
-'create' is defined.
+Either the C<root> option must be provided or both C<unprocessed> and
+C<processed> arguments must be defined. Will die if the directories do
+not exist unless the C<create> is defined.
 
 =over 4
 
@@ -66,49 +68,53 @@ arguments must be defined. Will die if the directories do not exist unless the
 
 Directory within which unprocessed files will be found.
 
-May also be a callback which is responsible for marking the item as unprocessed.
-This will be called with the arguments ($consumer,'unprocessed',$spec,$fh,$name)
+May also be a callback which is responsible for marking the item as
+unprocessed.  This will be called with the arguments C<($consumer,
+'unprocessed', $spec, $fh, $name)>.
 
 =item working => $path_spec
 
 Files will be moved to this directory prior to be processed.
 
-May also be a callback which is responsible for marking the item as working.
-This will be called with the arguments ($consumer,'working',$spec,$fh,$name)
+May also be a callback which is responsible for marking the item as
+working.  This will be called with the arguments C<($consumer,
+'working', $spec, $fh, $name)>.
 
 =item processed => $path_spec
 
 Once sucessfully processed the files will be moved to this directory.
 
-May also be a callback which is responsible for marking the item as processed.
-This will be called with the arguments ($consumer,'processed',$spec,$fh,$name)
+May also be a callback which is responsible for marking the item as
+processed.  This will be called with the arguments C<($consumer,
+'processed', $spec, $fh, $name)>.
 
 =item failed => $path_spec
 
 If processing fails then the files will be moved to this directory.
 
-May also be a callback which is responsible for marking the item as failed.
-This will be called with the arguments ($consumer,'failed',$spec,$fh,$name)
-
+May also be a callback which is responsible for marking the item as
+failed.  This will be called with the arguments C<($consumer, 'failed',
+$spec, $fh, $name)>.
 
 =item root => $path_spec
 
-Automatically creates any of the unprocessed, working, processed, or failed
-directories below a specified root. Only those directories not explicitly
-defined will be automatically created so this can be used in conjunction
-with the other options
+Automatically creates any of the C<unprocessed>, C<working>,
+C<processed>, or C<failed> directories below a specified C<root>. Only
+those directories not explicitly defined will be automatically created
+so this can be used in conjunction with the other options.
 
 =item create => $bool
 
 =item create_mode => $mode_flags
 
 If true then directories specified by not existing will be created.
-If create_mode is specified then the directories will be created with that mode.
+If C<create_mode> is specified then the directories will be created with that mode.
 
 =item open_mode => $mode_str
 
-In order to lock a file a filehandle must be opened, normally in read-only mode
-('<'), however it may be useful to open with other modes.
+In order to lock a file a filehandle must be opened, normally in
+read-only mode (C<<>), however it may be useful to open with other
+modes.
 
 =back
 
@@ -166,7 +172,7 @@ Reset the state of the object.
 
 Aquire an item to be processed.
 
-returns an identifier to be used to identify the item acquired.
+Returns an identifier to be used to identify the item acquired.
 
 =head2 $object->release()
 
@@ -245,8 +251,9 @@ sub release {
 
 =head2 $object->fh()
 
-Return a filehandle to the currently acquired item. See the open_mode argument
-in new() for details on how to contol the mode that the filehandle is opened  with.
+Return a filehandle to the currently acquired item. See the C<open_mode>
+argument in C<new()> for details on how to control the mode that the
+filehandle is opened with.
 
 =head2 $object->spec()
 
@@ -300,9 +307,7 @@ L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Data-Consumer>.
 I will be notified, and then you'll automatically be notified of progress on
 your bug as I make changes.
 
-
 =head1 ACKNOWLEDGEMENTS
-
 
 =head1 COPYRIGHT & LICENSE
 

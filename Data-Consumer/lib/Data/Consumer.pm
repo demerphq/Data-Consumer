@@ -13,19 +13,19 @@ Data::Consumer - Repeatedly consume a data resource in a robust way
 
 =head1 VERSION
 
-Version 0.01
+Version 0.03
 
 =cut
 
-$VERSION = '0.02';
+$VERSION = '0.03';
 #$Debug = 1;
 
 =head1 SYNOPSIS
 
     use Data::Consumer;
-    use Data::Consumer::Mysql;
+    use Data::Consumer::MySQL;
     my $consumer = Data::Consumer->new(
-        type => 'Mysql',
+        type => 'MySQL',
 	dbh => $dbh,
 	table => 'T', 
         id_field= > 'id',
@@ -52,17 +52,17 @@ constructor by using the key 'type' and the name of the subclass.
 
 Thus
 
-    Data::Consumer->new(type=>'mysql',%args);
+    Data::Consumer->new(type=>'MySQL',%args);
 
 is exactly equivalent to calling
 
-    Data::Consumer::Mysql->new(%args);
+    Data::Consumer::MySQL->new(%args);
 
 The subclass name is case insensitive and unless otherwise documented 
 is part of the class name after 'Data::Consumer' has been removed, 
 with colons optionally replaced by dashes.
 
-Thus 'mysql' and 'MYSQL' are valid type names for Data::Consumer::Mysql
+Thus 'mysql' and 'MYSQL' are valid type names for Data::Consumer::MySQL
 
 =head2 CLASS->register(@alias)
 

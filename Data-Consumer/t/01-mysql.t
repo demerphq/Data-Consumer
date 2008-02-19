@@ -1,5 +1,5 @@
 #!perl -T
-use Data::Consumer::Mysql;
+use Data::Consumer::MySQL;
 use strict;
 use warnings;
 use DBI;
@@ -80,7 +80,7 @@ $child and warn "\nThis will take around 30 seconds\n";
 $debug and Data::Consumer->debug_warn(0,"starting processing\n");
 $Data::Consumer::Debug=5 if $debug;
 
-my $consumer = Data::Consumer::Mysql->new(
+my $consumer = Data::Consumer::MySQL->new(
     connect     => \@connect,
     table       => $table,
     flag_field  => 'done',

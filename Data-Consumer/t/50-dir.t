@@ -91,7 +91,11 @@ if ( $child ) {
     $ok += !!is( $error, 0, 'count of files that arent single byte should be 0');
     $ok += !!is( "@{[sort keys %type]}", "processed", 'should be only processed');
     $ok += !!is( "@processed", "@expect", 'expected processed files' );
-    $ok == 3 or diag(Dumper(\%type));
+    if ($ok != 3) {
+        diag(Dumper(\%type));
+    } else {
+        rmtree 't/dir-test', $debug;
+    }
 } 
 
 1;

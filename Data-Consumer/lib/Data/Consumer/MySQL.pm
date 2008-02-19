@@ -13,7 +13,7 @@ BEGIN {
 
 =head1 NAME
 
-Data::Consumer::Mysql - Data::Consumer implementation for a mysql database table resource
+Data::Consumer::MySQL - Data::Consumer implementation for a mysql database table resource
 
 =head1 VERSION
 
@@ -26,8 +26,8 @@ our $VERSION = '0.01';
 
 =head1 SYNOPSIS
 
-    use Data::Consumer::Mysql;
-    my $consumer = Data::Consumer::Mysql->new(
+    use Data::Consumer::MySQL;
+    my $consumer = Data::Consumer::MySQL->new(
 	dbh => $dbh,
 	table => 'T', 
         id_field= > 'id',
@@ -47,7 +47,7 @@ our $VERSION = '0.01';
 
 =head2 new
 
-Constructor for a Data::Consumer::Mysql instance.
+Constructor for a Data::Consumer::MySQL instance.
 
 Options are as follows:
 
@@ -363,4 +363,4 @@ under the same terms as Perl itself.
 
 =cut
 
-1; # End of Data::Consumer::Mysql
+1; # End of Data::Consumer::MySQL

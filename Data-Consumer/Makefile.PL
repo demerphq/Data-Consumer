@@ -24,7 +24,7 @@ delete the file (or run make clean) and rerun Makefile.PL.
 
 If you wish to set things up now the db, username, and 
 password will by default be '$db', '$usr', '$pwd', 
-and the table i will create and drop for testing 
+and the table I will create and drop for testing 
 will be '$table'.
 
 EOFTEXT

@@ -46,7 +46,7 @@ if ( $child ) {
    sleep(1);
 }
 
-$child and warn "\nThis will take around 30 seconds\n";
+$child and diag("This will take around 30 seconds");
 $debug and Data::Consumer->debug_warn(0,"starting processing\n");
 $Data::Consumer::Debug=5 if $debug;
 

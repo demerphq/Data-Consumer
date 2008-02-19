@@ -53,7 +53,7 @@ $VERSION= '0.08';
 
 =head1 FUNCTIONS
 
-=head2 new
+=head2 CLASS->new(%opts)
 
 Constructor for a Data::Consumer::MySQL instance.
 
@@ -358,7 +358,7 @@ sub _mark_as {
     }
 }
 
-=head2 $object->dbh
+=head2 $object->dbh()
 
 returns the database handle the object is using to communicate to the db with.
 

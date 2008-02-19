@@ -52,7 +52,7 @@ $VERSION= '0.08';
 
 =head1 FUNCTIONS
 
-=head2 new
+=head2 CLASS->new(%opts)
 
 Constructor for a Data::Consumer::Dir instance.
 
@@ -242,6 +242,27 @@ sub release {
     delete $self->{last_id};
     return 1;
 }
+
+=head2 $object->fh()
+
+Return a filehandle to the currently acquired item. See the open_mode argument
+in new() for details on how to contol the mode that the filehandle is opened  with.
+
+=head2 $object->spec()
+
+Return the full filespec for the currently acquired item. 
+
+=head2 $object->file()
+
+Return the filename (without path) of the currently acquired item. 
+
+Note that this is an alias for C<< $object->last_id() >>.
+
+=cut
+
+sub fh   { $self->{lock_fh} }
+sub spec { $self->{lock_spec} }
+sub file { $self->{last_id} }
 
 sub _mark_as {
     my ( $self, $key, $id )= @_;

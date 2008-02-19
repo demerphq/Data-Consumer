@@ -45,10 +45,12 @@ $VERSION= '0.08';
 
 =head2 CLASS->new(%opts)
 
-Constructor. Normally this routine is not used and instead
-the appropriate sub classes constructor is used, however
-the base classes constructor may be used as a data driven
-constructor by using the key 'type' and the name of the subclass.
+Constructor. Normally Data::Consumer's constructor is not
+called directly, instead the constructor of a subclass is used.
+However to make it easier to have a data driven load process  
+Data::Consumer accepts the 'type' argument which should specify the
+the short name of the subclass (the part after Data::Consumer::) or
+the full name of the subclass.
 
 Thus
 
@@ -58,12 +60,38 @@ is exactly equivalent to calling
 
     Data::Consumer::MySQL->new(%args);
 
-except that the former will automatically require the appropriate module.
+except that the former will automatically require or use the appropriate module 
+and the latter necessitates that you do so yourself.
 
-On top of the subclass specific arguments there are certain arguments that
-are shared among all consumers
+Every Data::Consumer subclass constructor supports the following arguments on 
+top of any that are subclass specific. Additionally some arguments are universally
+used, but have different meaning depending on the subclass. 
 
 =over 4
+
+=item unprocessed
+
+How to tell if the item is unprocessed. 
+
+How this argument is interpreted depends on the Data::Consumer subclass involved.
+
+=item working
+
+How to tell if the item is currently being worked on.
+
+How this argument is interpreted depends on the Data::Consumer subclass involved.
+
+=item processed
+
+How to tell if the item has already been worked on.
+
+How this argument is interpreted depends on the Data::Consumer subclass involved.
+
+=item failed
+
+How to tell if processing failed while handling the item.
+
+How this argument is interpreted depends on the Data::Consumer subclass involved.
 
 =item max_passes => $num_or_undef
 
@@ -112,7 +140,7 @@ processing). Generally this should not be necessary.
 Used by subclasses to register themselves as a Data::Consumer subclass
 and register any additional aliases that the class may be identified as.
 
-Will throw an exception is any of the aliases are already associated to a
+Will throw an exception if any of the aliases are already associated to a
 different class.
 
 When called on a subclass in list context returns a list of the subclasses
@@ -193,7 +221,7 @@ BEGIN {
     }
 }
 
-=head2 $object->last_id
+=head2 $object->last_id()
 
 Returns the identifier for the last item acquired.
 
@@ -207,19 +235,25 @@ sub last_id {
     return $self->{last_id};
 }
 
-=head2 $object->_mark_as($type,$id)
-
-** Must be overriden **
-
-Mark an item as a particular type if the object defines that type.
-
-This is wrapped by mark_as() for error checking, so you are guaranteed
-that $type will be one of
-
-    'unprocessed', 'working', 'processed', 'failed'
-
-and that $object->{$type} will be true value, and that $id will be from
-the currently acquired item.
+# Until i figure out to make gedit handle begin/end directives this has to
+# stay commented out
+#=begin dev
+#
+#=head2 $object->_mark_as($type,$id)
+#
+#** Must be overriden **
+#
+#Mark an item as a particular type if the object defines that type.
+#
+#This is wrapped by mark_as() for error checking, so you are guaranteed
+#that $type will be one of
+#
+#    'unprocessed', 'working', 'processed', 'failed'
+#
+#and that $object->{$type} will be true value, and that $id will be from
+#the currently acquired item.
+#
+#=end dev
 
 =head2 $object->mark_as($type)
 
@@ -305,10 +339,10 @@ sub reset   { confess "abstract method must be overriden by subclass\n"; }
 sub acquire { confess "abstract method must be overriden by subclass\n"; }
 sub release { confess "abstract method must be overriden by subclass\n"; }
 
-=head2 error
+=head2 $object->error()
 
 Calls the 'error' callback if the user has provided one, otherwise calls
-confess().
+confess(). Probably not all that useful for an end user.
 
 =cut
 
@@ -347,14 +381,14 @@ If this callback returns true then the other rules will be applied, and
 only if all other conditions from the constructort are satisfied will proceed()
 itself return true.
 
-=head2 $object->sweep
+=head2 $object->sweep()
 
 If the user has specified both a 'working' and a 'failed' state then
 this routine will move all lockable 'working' items and change them to
 the 'failed' state. This is to catch catastrophic failures where unprocessed
 items are left in the working state. Presumably this is a rare case.
 
-=head2 $object->runstats
+=head2 $object->runstats()
 
 Returns a reference to a hash of statistics about the last (or currently running)
 execution of consume.
@@ -433,7 +467,8 @@ sub _sweep {
 
         @$new{ 'unprocessed', 'processed' }= @$new{ 'working', 'failed' };
         delete @$new{qw(proceed runstats working failed sweep sweeper)};
-
+        delete @$new{ grep { /^max-/ } keys %$new };
+        $new->{ max-passes }= 1;
         $self->_fixup_sweeper($new);
 
         $self->{sweeper}= $new;

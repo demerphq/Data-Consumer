@@ -260,9 +260,9 @@ Note that this is an alias for C<< $object->last_id() >>.
 
 =cut
 
-sub fh   { $self->{lock_fh} }
-sub spec { $self->{lock_spec} }
-sub file { $self->{last_id} }
+sub fh   { $_[0]->{lock_fh} }
+sub spec { $_[0]->{lock_spec} }
+sub file { $_[0]->{last_id} }
 
 sub _mark_as {
     my ( $self, $key, $id )= @_;

@@ -468,7 +468,7 @@ sub _sweep {
         @$new{ 'unprocessed', 'processed' }= @$new{ 'working', 'failed' };
         delete @$new{qw(proceed runstats working failed sweep sweeper)};
         delete @$new{ grep { /^max-/ } keys %$new };
-        $new->{ max-passes }= 1;
+        $new->{ max_passes }= 1;
         $self->_fixup_sweeper($new);
 
         $self->{sweeper}= $new;

@@ -1,4 +1,4 @@
-#!perl -T
+##!perl -T
 use Data::Consumer::MySQL;
 use strict;
 use warnings;
@@ -8,12 +8,16 @@ our @fake_error;
 our @expect_fail;
 our %process_state;
 our @connect_args;
+our $table;
 
 my $conf_file = 'mysql.pldat';
+use Cwd;
+warn cwd;
 if (-e $conf_file) {
     # eval @connect_args into existance
-    do $conf_file
-        or die $@;
+    my $ok = do $conf_file;
+    defined $ok or die "Error loading $conf_file: ", $@||$!;
+
     unless (@connect_args) {
         my $reason='no mysql connection details available';
         eval 'use Test::More skip_all => ; 1;'
@@ -28,8 +32,6 @@ if (!%process_state) {
 	failed      => 3,
     );
 }
-
-my $table = 'TEMP_DATA_CONSUMER_TEST_TABLE';
 
 my $drop = <<"ENDOFSQL";
 DROP TABLE `$table`

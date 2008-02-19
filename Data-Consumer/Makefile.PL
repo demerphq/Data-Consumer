@@ -4,6 +4,11 @@ use ExtUtils::MakeMaker;
 use Data::Dumper;
 
 my $conf_file = 'mysql.pldat';
+
+my $table = 'TEMP_DATA_CONSUMER_TEST_TABLE';
+my $db = 'dev';
+my $usr = 'test';
+my $pwd = 'test';
 unless (-e $conf_file) {
 
 	print <<EOFTEXT;
@@ -17,19 +22,24 @@ you wont have to go through this process again even if you
 rerun this script. If you wish to change your answer 
 delete the file (or run make clean) and rerun Makefile.PL.
 
+If you wish to set things up now the db, username, and 
+password will by default be '$db', '$usr', '$pwd', 
+and the table i will create and drop for testing 
+will be '$table'.
+
 EOFTEXT
 
 	my $do_mysql_config = prompt "Run MySQL tests? [yes/no]",'no';
 	my @connect;
 	if ($do_mysql_config=~/^y/i) {
-		my $db  = prompt "Please enter database name:";
-		my $usr = prompt "Please enter user name to connect to $db with:";
-		my $pwd = prompt "Please enter password to use for $usr:";
+		$db  = prompt "Please enter database name:",$db;
+		$usr = prompt "Please enter user name to connect to $db with:",$usr;
+		$pwd = prompt "Please enter password to use for $usr:",$pwd;
+		$table = prompt "Table to use for testing:",$table;
 		push @connect,$db,$usr,$pwd;
 	}
-
 	open my $fh,">",$conf_file or die "Cant open '$conf_file' for writing: $!";
-	print $fh Data::Dumper->Dump([\@connect],['*connect_args']);
+			print $fh Data::Dumper->Dump([$table, \@connect],[qw(*table *connect_args)]);
 	close $fh;
 }
 

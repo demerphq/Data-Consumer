@@ -8,7 +8,7 @@ use warnings FATAL => 'all';
 use base 'Data::Consumer';
 use File::Spec;
 use File::Path;
-use Fcntl ’:flock’; # import LOCK_* constants
+use Fcntl ':flock';
 
 BEGIN {
     __PACKAGE__->register();
@@ -144,7 +144,7 @@ sub reset {
     $self->debug_warn(5,"reset");
     $self->release();
     opendir my $dh, $self->{unprocessed} 
-        or die "Failed to opendir '$self->{unprocessed}': $!"
+        or die "Failed to opendir '$self->{unprocessed}': $!";
     my @files = sort grep { -f $_ } readdir($dh);
     $self->{files}=\@files;
     return $self;
@@ -154,7 +154,7 @@ sub _cf { # cat file
     my ($r,$f) =@_;
 
     my ($v,$p)= File::Spec->splitpath($r,'nofile');
-    return File::Spec->catpath($v,$d,$f);
+    return File::Spec->catpath($v,$p,$f);
 }
 
 sub acquire { 
@@ -168,10 +168,10 @@ sub acquire {
         my $file = shift @$files;
         my $spec = _cf($self->{unprocessed},$file);
         my $fh;
-        if (open $fh,"<",$spec and flock($fh,LOCK_EX,LOCK_NB)) {
+        if (open $fh,"<",$spec and flock($fh,LOCK_EX|LOCK_NB)) {
             $self->{lock_fh} = $fh;
             $self->{lock_spec} = $spec;
-            $self->debug_warn(5,"acquired '$id'");
+            $self->debug_warn(5,"acquired '$file': $spec");
             $self->{last_id} = $file;
             return $file;
         }

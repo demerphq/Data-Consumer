@@ -1,10 +1,10 @@
 #!perl -T
-use Data::Consumer::Mysql;
+use Data::Consumer::Dir;
 use strict;
 use warnings;
 use DBI;
 
-my $debug = 0;
+my $debug = 1;
 
 our %process_state;
 if (!%process_state) {
@@ -14,7 +14,7 @@ if (!%process_state) {
     );
 }
 
-mkdir 't/dir-test' if !-d 't/dir-test';
+mkdir 't/dir-test' and mkdir 't/dir-test/working' if !-d 't/dir-test/working';
 for (1..50) {
     open my $fh,">","t/dir-test/$_" 
         or die "failed to create test file t/dir-test/$_:$!";
@@ -66,14 +66,6 @@ if ( $child ) {
         sleep(1);
     }
         
-    my $recs = $consumer->dbh->selectall_arrayref(
-        "SELECT * FROM `$table` WHERE NOT(`n` = ? AND `done` = ?)",
-        undef, 1, $process_state{processed},
-    );
-    my $num = 0 + @$recs;
-    $debug and $consumer->debug_warn(0,"Found $num incorrectly processed items.\n");
-    is($num, 0, 'should be 0 incorrectly processed items')
-        or do { warn map {  "[@{$recs->[$_]}] " . ( 7 == $_ % 8 ? "\n" : "" ) } (0..$#$recs)  };
 } else {
     undef $consumer;
 }

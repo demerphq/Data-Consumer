@@ -2,6 +2,7 @@ package Data::Consumer;
 
 use warnings;
 use strict;
+use Carp;
 
 =head1 NAME
 
@@ -34,11 +35,121 @@ if you don't export anything, such as for a purely object-oriented module.
 
 =head1 FUNCTIONS
 
-=head2 function1
+=head2 new
+
+Constructor. Must be overriden. See details of constructor in sub classes.
 
 =cut
 
-sub function1 {
+sub new {
+    my $class = shift;
+    $class eq __PACKAGE__
+        and coness "$class is an abstract base class, you cannot instanciate it\n"
+
+    ref $class 
+        and confess "new() is a class method and cannot be called on an object\n";
+
+    return bless {},$class;
+}
+
+=head2  reset 
+
+Reset the state of the object.
+
+=head2 acquire
+
+Aquire an item to be processed. 
+
+returns an identifier to be used to identify the item acquired.
+
+=head2 release 
+
+Release any locks on the currently held item.
+
+Normally there is no need to call this directly. 
+
+=cut
+
+sub reset   { confess "abstract method must be overriden by subclass\n"; }
+sub acquire { confess "abstract method must be overriden by subclass\n"; }
+sub release { confess "abstract method must be overriden by subclass\n"; }
+
+
+=begin developer
+
+=head2 _check
+
+Calls the 'check' callback if the user has provided one.
+
+=head2 _error
+
+Calls the 'error' callback if the user has provided one, otherwise calls 
+confess().
+
+=cut
+
+
+sub _check   { 
+    my ($self,$passes,$updated,$failed,$updated_this_pass,$failed_this_pass)=@_;
+    if ($self->{check}) {
+        $self->{check}->($passes,$updated,$failed,$updated_this_pass,$failed_this_pass);
+    }
+}
+
+sub _error   { 
+    my $self=shift;
+    if ($self->{_error}) {
+        $self->{_error}->(@_);
+    } else {
+        confess @_
+    }
+}
+
+=end developer
+
+=head2 consume
+
+Takes a subroutine callback as an argument.
+
+Will repeatedly aquire items, call the callback with the items identifier
+as an argument, and then mark it as done.
+
+If the callback dies during processing then the item will be marked as failed.
+
+=cut
+
+sub consume {
+    my $self= shift;
+    my $callback = shift;
+
+    my $passes  = 0;
+
+    my $updated = 0;
+    my $failed  = 0;
+    my ($updated_this_pass, $failed_this_pass);
+
+    $self->reset();
+    do  { UPDATED:{
+        ++$passes;
+        $updated_this_pass = 0;
+        $failed_this_pass = 0;
+        while ( defined( my $item = $self->acquire() ) ) {
+            eval { 
+                $self->process($callback);
+                $updated_this_pass++;
+                1; 
+            } or do {
+                $failed_this_pass++;
+                $self->_error("Failed during callback handling: $@"); # quotes force string copy
+            };
+            
+        }
+        $updated += $updated_this_pass;
+        $failed  += $failed_this_pass;
+        last if 'stop' eq lc($self->_check($passes,$updated,$failed,$updated_this_pass,$failed_this_pass));
+    } } while $updated_this_pass;
+    $self->release(); # if we still hold a lock let it go.
+    return wantarray ? ($updated,$failed) : $updated;
 }
 
 =head2 function2

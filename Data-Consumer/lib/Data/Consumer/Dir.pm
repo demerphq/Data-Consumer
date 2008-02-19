@@ -97,46 +97,50 @@ In order to lock a file a filehandle must be opened, normally in read-only mode
 =back
 
 =cut
-{ 
-my @keys=qw(unprocessed working processed failed);
-sub new {
-    my ($class, %opts)=@_;
-    my $self = $class->SUPER::new(); # let Data::Consumer bless the hash
 
-    if ($opts{root}) {
-        my ($v,$p)= File::Spec->splitpath($opts{root},'nofile');
-        for my $type (@keys) {
-            $opts{$type} ||= File::Spec->catpath($v,File::Spec->catdir($p,$type),'');
+BEGIN { 
+    my @keys=qw(unprocessed working processed failed);
+    my %m = ( 
+        '<' => O_RDONLY, 
+        '+<' => O_RDWR, 
+        '>>' => O_APPEND|O_WRONLY,
+        '+>>' => O_APPEND|O_RDWR,
+    );
+    $_ = $_ | O_NONBLOCK for values %m;
+
+    sub new {
+        my ($class, %opts)=@_;
+        my $self = $class->SUPER::new(); # let Data::Consumer bless the hash
+
+        if ($opts{root}) {
+            my ($v,$p)= File::Spec->splitpath($opts{root},'nofile');
+            for my $type (@keys) {
+                $opts{$type} ||= File::Spec->catpath($v,File::Spec->catdir($p,$type),'');
+            }
         }
-    }
-    ($opts{unprocessed} and $opts{processed}) or 
-        confess "Arguments 'unprocessed' and 'processed' are mandatory";
-    
-    if ($opts{create}) {
-        for (@keys) {
-            next unless exists $opts{$_};
-            next if -d $opts{$_};
-            mkpath($opts{$_}, $Data::Consumer::Debug, $opts{create_mode} || ());
+        ($opts{unprocessed} and $opts{processed}) or 
+            confess "Arguments 'unprocessed' and 'processed' are mandatory";
+        
+        if ($opts{create}) {
+            for (@keys) {
+                next unless exists $opts{$_};
+                next if -d $opts{$_};
+                mkpath($opts{$_}, $Data::Consumer::Debug, $opts{create_mode} || ());
+            }
         }
+        if ($opts{open_mode}) {
+            exists $m{$opts{open_mode}}
+                or confess "Illegal open mode '$opts{open_mode}' legal options are "
+                           . join(',', map { "'$_'" } sort keys %m)
+                           . "\n";
+            $opts{open_mode} = $m{$opts{open_mode}};    
+        } else {
+            $opts{open_mode} = O_RDONLY|O_NONBLOCK;
+        }   
+        
+        %$self = %opts;
+        return $self;
     }
-    if ($opts{open_mode}) {
-        my %m = ( 
-            '<' => O_RDONLY, 
-            '+<' => O_RDWR, 
-            '>>' => O_APPEND|O_WRONLY,
-            '+>>' => O_APPEND|O_RDWR,
-         );
-        $_=$_|O_NONBLOCK for values %m;
-        exists $m{$opts{open_mode}}
-            or confess "Illegal open mode '$opts{open_mode}' legal options are '<', '+<' and '>>'\n";
-        $opts{open_mode} = $m{$opts{open_mode}};    
-    } else {
-        $opts{open_mode} = O_RDONLY|O_NONBLOCK;
-    }   
-    
-    %$self = %opts;
-    return $self;
-}
 }
 
 

@@ -3,9 +3,7 @@ package Data::Consumer;
 use warnings;
 use strict;
 use Carp;
-use vars qw/$Debug $VERSION/;
-
-
+use vars qw/$Debug $VERSION Fail Cmd/;
 
 =head1 NAME
 

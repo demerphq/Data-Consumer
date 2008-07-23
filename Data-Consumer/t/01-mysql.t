@@ -2,6 +2,7 @@
 use Data::Consumer;
 use strict;
 use warnings;
+use Data::Dumper;
 use DBI;
 my $debug = @ARGV ? shift : $ENV{TEST_DEBUG};
 our @fake_error;
@@ -10,7 +11,6 @@ our %process_state;
 our @connect_args;
 our $table;
 our $class_to_test;
-
 eval 'use Data::Consumer::MySQL; 1' or die $@ 
     if !$class_to_test;
 my $conf_file = 'mysql.pldat';
@@ -21,7 +21,7 @@ if (-e $conf_file) {
 
     unless (@connect_args) {
         my $reason='no mysql connection details available';
-        eval 'use Test::More skip_all => ; 1;'
+        eval 'use Test::More skip_all => $reason; 1;'
             or die $@;
     }
 }
@@ -136,6 +136,8 @@ if ( $child ) {
     my $expect = 0+@expect_fail;
     $debug and $consumer->debug_warn($expect,"Found $num incorrectly processed items expected $expect.\n");
     my $err = !is($num, $expect, "should be $expect incorrectly processed items");
+    
+    warn Dumper($recs) if $expect;
     foreach my $idx (0..$#expect_fail) {
         $err ||= !is("@{$recs->[$idx]}","@{$expect_fail[$idx]}");
     }

@@ -699,7 +699,20 @@ rare case.
 =head2 $object->runstats()
 
 Returns a reference to a hash of statistics about the last (or currently running)
-execution of consume.
+execution of consume. Example:
+
+	{
+          'passes' 		=> 2,
+          'processed_this_pass' => 0,
+          'processed' 		=> 3,
+          'start_time' 		=> 1209750962,
+          'failed' 		=> 0,
+          'elapsed' 		=> 0,
+          'end_time' 		=> 1209750962,
+          'failed_this_pass' 	=> 0
+        }
+
+Note that start_time and end_time are unix timestamps.
 
 =cut
 
@@ -717,7 +730,7 @@ sub proceed {
     }
     for my $key (qw(elapsed passes processed failed)) {
         my $max= "max_$key";
-        return if $self->{$max} && $runstats->{$key} > $self->{$max};
+        return if $self->{$max} && $runstats->{$key} >= $self->{$max};
     }
     return if $self->{halt};
     return 1;
@@ -729,39 +742,42 @@ sub consume {
 
     my $passes= 0;
 
-    my %runstats;
-    $self->{runstats}= \%runstats;
+    unless ($self->{runstats}) {
+        $self->{runstats}= {};
+        $self->{runstats}{$_}= 0 
+            for qw(passes processed failed processed_this_pass failed_this_pass);
+    }
 
-    $runstats{start_time}= time;
-    $runstats{$_}= 0 for qw(passes updated failed updated_this_pass failed_this_pass);
+    my $runstats= $self->{runstats};
+    $runstats->{start_time}= time;
 
     $self->reset();
     do {
-        ++$runstats{passes};
-        $runstats{updated_this_pass}= $runstats{failed_this_pass}= 0;
+        ++$runstats->{passes};
+        $runstats->{processed_this_pass}= $runstats->{failed_this_pass}= 0;
         while ( $self->proceed && defined( my $item= $self->acquire ) ) {
             eval {
                 $self->process($callback);
-                $runstats{updated_this_pass}++;
-                $runstats{updated}++;
+                $runstats->{processed_this_pass}++;
+                $runstats->{processed}++;
                 1;
               }
               or do {
-                $runstats{failed_this_pass}++;
-                $runstats{failed}++;
+                $runstats->{failed_this_pass}++;
+                $runstats->{failed}++;
 
                 # quotes force string copy
-                $self->error("Failed during callback handling: $@");
-              };
+                $self->debug_warn(5, "Failed during \$self->process(\$callback): $@");
+              }
         }
         $self->_sweep() if $self->{sweep};
-      } while $self->proceed( $runstats{passes} )
-          && $runstats{updated_this_pass};
+      } while $self->proceed( $runstats->{passes} )
+          && $runstats->{processed_this_pass};
 
     # if we still hold a lock let it go.
     delete $self->{halt};
     $self->release;
-    return \%runstats;
+    return $runstats;
 }
 
 sub _fixup_sweeper {

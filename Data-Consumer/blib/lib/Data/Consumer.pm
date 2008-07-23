@@ -15,11 +15,11 @@ Data::Consumer - Repeatedly consume a data resource in a robust way
 
 =head1 VERSION
 
-Version 0.09
+Version 0.10
 
 =cut
 
-$VERSION= '0.09';
+$VERSION= '0.10';
 
 =head1 SYNOPSIS
 

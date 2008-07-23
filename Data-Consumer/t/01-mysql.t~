@@ -10,7 +10,8 @@ our %process_state;
 our @connect_args;
 our $table;
 our $class_to_test;
-eval 'require Data::Consumer::MySQL; 1' or die $@ 
+
+eval 'use Data::Consumer::MySQL; 1' or die $@ 
     if !$class_to_test;
 my $conf_file = 'mysql.pldat';
 if (-e $conf_file) {

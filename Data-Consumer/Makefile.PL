@@ -1,3 +1,4 @@
+BEGIN { } 
 use strict;
 use warnings;
 use ExtUtils::MakeMaker;
@@ -53,8 +54,8 @@ WriteMakefile(
         'Test::More' => 0,
 	'Data::Dumper' => 0,
 	'DBI' => 0,
-	'File::Spec' => 0,
-	'File::Path' => 0,
+	'File::Spec' => 3.2701,
+	'File::Path' => 2.04,
 	'Fcntl' => 0,
 	'POSIX' => 0,
     },

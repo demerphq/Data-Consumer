@@ -15,11 +15,11 @@ Data::Consumer - Repeatedly consume a data resource in a robust way
 
 =head1 VERSION
 
-Version 0.09
+Version 0.10
 
 =cut
 
-$VERSION= '0.09';
+$VERSION= '0.10';
 
 =head1 SYNOPSIS
 
@@ -399,24 +399,23 @@ sub last_id {
 
 # Until i figure out to make gedit handle begin/end directives this has to
 # stay commented out
-
-=begin foo
-
-=head2 $object->_mark_as($type,$id)
-
-** Must be overriden **
-
-Mark an item as a particular type if the object defines that type.
-
-This is wrapped by mark_as() for error checking, so you are guaranteed
-that $type will be one of
-
-    'unprocessed', 'working', 'processed', 'failed'
-
-and that $object->{$type} will be true value, and that $id will be from
-the currently acquired item.
-
-=end foo
+#=begin dev
+#
+#=head2 $object->_mark_as($type,$id)
+#
+#** Must be overriden **
+#
+#Mark an item as a particular type if the object defines that type.
+#
+#This is wrapped by mark_as() for error checking, so you are guaranteed
+#that $type will be one of
+#
+#    'unprocessed', 'working', 'processed', 'failed'
+#
+#and that $object->{$type} will be true value, and that $id will be from
+#the currently acquired item.
+#
+#=end dev
 
 =head2 $object->mark_as($type)
 
@@ -513,7 +512,7 @@ sub process {
 }
 
 
-=head2 $object->leave()
+=head2 $consumer->leave()
 
 Sometimes its useful to defer processing. This method when called
 from within a consume/process callback will result in the 
@@ -537,7 +536,7 @@ sub leave {
     return $self;
 }
 
-=head2 $object->ignore(@list)
+=head2 $consumer->ignore(@list)
 
 This can used to cause acquire to ignore each item in @list. 
 
@@ -564,7 +563,7 @@ sub ignore {
     return $self;
 }
 
-=head2 $object->fail($message)
+=head2 $consumer->fail($message)
 
 Same as doing die($message) from within a consume/process callback except 
 that no exception is thrown (no $SIG{__DIE__} callbacks are invoked) and 
@@ -586,7 +585,7 @@ sub fail {
     return $self;
 }
 
-=head2 $object->halt()
+=head2 $consumer->halt()
 
 Causes consume() to halt processing and exit once
 the callback returns. Typically invoked like

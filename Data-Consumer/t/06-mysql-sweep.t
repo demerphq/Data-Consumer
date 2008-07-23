@@ -9,14 +9,15 @@ our %process_state = (
     failed      => 3,
 );
 our @expect_fail=[51,0,3];
+
+@expect_fail = @expect_fail; # silence warnings on 5.6.2
+%process_state = %process_state; # silence warnings on 5.6.2
+@fake_error = @fake_error; # silence warnings on 5.6.2
+
 my $file='t/01-mysql.t';
-
 my $res = do $file;
-
 if (!defined $res) {
     die "Error executing '$file': ",$@||$!,"\nCwd=". cwd(),"\n";
-    
-    
 }
 
 

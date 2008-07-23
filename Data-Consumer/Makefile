@@ -14,7 +14,7 @@
 #     AUTHOR => q[Yves Orton <YVES@cpan.org>]
 #     NAME => q[Data::Consumer]
 #     PL_FILES => {  }
-#     PREREQ_PM => { Test::More=>q[0], POSIX=>q[0], Fcntl=>q[0], File::Spec=>q[0], Data::Dumper=>q[0], File::Path=>q[0], DBI=>q[0] }
+#     PREREQ_PM => { Test::More=>q[0], POSIX=>q[0], Fcntl=>q[0], File::Spec=>q[3.2701], Data::Dumper=>q[0], File::Path=>q[2.04], DBI=>q[0] }
 #     VERSION_FROM => q[lib/Data/Consumer.pm]
 #     clean => { FILES=>q[Data-Consumer-* *~ mysql.pldat] }
 #     dist => { COMPRESS=>q[gzip -9f], SUFFIX=>q[gz] }
@@ -57,11 +57,11 @@ DIRFILESEP = /
 DFSEP = $(DIRFILESEP)
 NAME = Data::Consumer
 NAME_SYM = Data_Consumer
-VERSION = 0.09
+VERSION = 0.10
 VERSION_MACRO = VERSION
-VERSION_SYM = 0_09
+VERSION_SYM = 0_10
 DEFINE_VERSION = -D$(VERSION_MACRO)=\"$(VERSION)\"
-XS_VERSION = 0.09
+XS_VERSION = 0.10
 XS_VERSION_MACRO = XS_VERSION
 XS_DEFINE_VERSION = -D$(XS_VERSION_MACRO)=\"$(XS_VERSION)\"
 INST_ARCHLIB = blib/arch
@@ -187,7 +187,10 @@ PERL_ARCHIVE_AFTER =
 TO_INST_PM = lib/Data/Consumer.pm \
 	lib/Data/Consumer.pm.tdy \
 	lib/Data/Consumer/Dir.pm \
-	lib/Data/Consumer/MySQL.pm
+	lib/Data/Consumer/MySQL.pm \
+	lib/Data/Consumer/MySQL.pm.html \
+	lib/Data/Consumer/pod2htmd.tmp \
+	lib/Data/Consumer/pod2htmi.tmp
 
 PM_TO_BLIB = lib/Data/Consumer/Dir.pm \
 	blib/lib/Data/Consumer/Dir.pm \
@@ -196,7 +199,13 @@ PM_TO_BLIB = lib/Data/Consumer/Dir.pm \
 	lib/Data/Consumer.pm \
 	blib/lib/Data/Consumer.pm \
 	lib/Data/Consumer/MySQL.pm \
-	blib/lib/Data/Consumer/MySQL.pm
+	blib/lib/Data/Consumer/MySQL.pm \
+	lib/Data/Consumer/pod2htmd.tmp \
+	blib/lib/Data/Consumer/pod2htmd.tmp \
+	lib/Data/Consumer/MySQL.pm.html \
+	blib/lib/Data/Consumer/MySQL.pm.html \
+	lib/Data/Consumer/pod2htmi.tmp \
+	blib/lib/Data/Consumer/pod2htmi.tmp
 
 
 # --- MakeMaker platform_constants section:
@@ -263,7 +272,7 @@ RCS_LABEL = rcs -Nv$(VERSION_SYM): -q
 DIST_CP = best
 DIST_DEFAULT = tardist
 DISTNAME = Data-Consumer
-DISTVNAME = Data-Consumer-0.09
+DISTVNAME = Data-Consumer-0.10
 
 
 # --- MakeMaker macro section:
@@ -489,7 +498,7 @@ metafile : create_distdir
 	$(NOECHO) $(ECHO) Generating META.yml
 	$(NOECHO) $(ECHO) '--- #YAML:1.0' > META_new.yml
 	$(NOECHO) $(ECHO) 'name:                Data-Consumer' >> META_new.yml
-	$(NOECHO) $(ECHO) 'version:             0.09' >> META_new.yml
+	$(NOECHO) $(ECHO) 'version:             0.10' >> META_new.yml
 	$(NOECHO) $(ECHO) 'abstract:            Repeatedly consume a data resource in a robust way' >> META_new.yml
 	$(NOECHO) $(ECHO) 'license:             ~' >> META_new.yml
 	$(NOECHO) $(ECHO) 'generated_by:        ExtUtils::MakeMaker version 6.36' >> META_new.yml
@@ -498,8 +507,8 @@ metafile : create_distdir
 	$(NOECHO) $(ECHO) '    Data::Dumper:                  0' >> META_new.yml
 	$(NOECHO) $(ECHO) '    DBI:                           0' >> META_new.yml
 	$(NOECHO) $(ECHO) '    Fcntl:                         0' >> META_new.yml
-	$(NOECHO) $(ECHO) '    File::Path:                    0' >> META_new.yml
-	$(NOECHO) $(ECHO) '    File::Spec:                    0' >> META_new.yml
+	$(NOECHO) $(ECHO) '    File::Path:                    2.04' >> META_new.yml
+	$(NOECHO) $(ECHO) '    File::Spec:                    3.2701' >> META_new.yml
 	$(NOECHO) $(ECHO) '    POSIX:                         0' >> META_new.yml
 	$(NOECHO) $(ECHO) '    Test::More:                    0' >> META_new.yml
 	$(NOECHO) $(ECHO) 'meta-spec:' >> META_new.yml
@@ -797,7 +806,7 @@ testdb_static :: testdb_dynamic
 # --- MakeMaker ppd section:
 # Creates a PPD (Perl Package Description) for a binary distribution.
 ppd:
-	$(NOECHO) $(ECHO) '<SOFTPKG NAME="$(DISTNAME)" VERSION="0,09,0,0">' > $(DISTNAME).ppd
+	$(NOECHO) $(ECHO) '<SOFTPKG NAME="$(DISTNAME)" VERSION="0,10,0,0">' > $(DISTNAME).ppd
 	$(NOECHO) $(ECHO) '    <TITLE>$(DISTNAME)</TITLE>' >> $(DISTNAME).ppd
 	$(NOECHO) $(ECHO) '    <ABSTRACT>Repeatedly consume a data resource in a robust way</ABSTRACT>' >> $(DISTNAME).ppd
 	$(NOECHO) $(ECHO) '    <AUTHOR>Yves Orton &lt;YVES@cpan.org&gt;</AUTHOR>' >> $(DISTNAME).ppd
@@ -805,8 +814,8 @@ ppd:
 	$(NOECHO) $(ECHO) '        <DEPENDENCY NAME="DBI" VERSION="0,0,0,0" />' >> $(DISTNAME).ppd
 	$(NOECHO) $(ECHO) '        <DEPENDENCY NAME="Data-Dumper" VERSION="0,0,0,0" />' >> $(DISTNAME).ppd
 	$(NOECHO) $(ECHO) '        <DEPENDENCY NAME="Fcntl" VERSION="0,0,0,0" />' >> $(DISTNAME).ppd
-	$(NOECHO) $(ECHO) '        <DEPENDENCY NAME="File-Path" VERSION="0,0,0,0" />' >> $(DISTNAME).ppd
-	$(NOECHO) $(ECHO) '        <DEPENDENCY NAME="File-Spec" VERSION="0,0,0,0" />' >> $(DISTNAME).ppd
+	$(NOECHO) $(ECHO) '        <DEPENDENCY NAME="File-Path" VERSION="2,04,0,0" />' >> $(DISTNAME).ppd
+	$(NOECHO) $(ECHO) '        <DEPENDENCY NAME="File-Spec" VERSION="3,2701,0,0" />' >> $(DISTNAME).ppd
 	$(NOECHO) $(ECHO) '        <DEPENDENCY NAME="POSIX" VERSION="0,0,0,0" />' >> $(DISTNAME).ppd
 	$(NOECHO) $(ECHO) '        <DEPENDENCY NAME="Test-More" VERSION="0,0,0,0" />' >> $(DISTNAME).ppd
 	$(NOECHO) $(ECHO) '        <OS NAME="$(OSNAME)" />' >> $(DISTNAME).ppd
@@ -823,7 +832,10 @@ pm_to_blib : $(TO_INST_PM)
 	  lib/Data/Consumer/Dir.pm blib/lib/Data/Consumer/Dir.pm \
 	  lib/Data/Consumer.pm.tdy blib/lib/Data/Consumer.pm.tdy \
 	  lib/Data/Consumer.pm blib/lib/Data/Consumer.pm \
-	  lib/Data/Consumer/MySQL.pm blib/lib/Data/Consumer/MySQL.pm 
+	  lib/Data/Consumer/MySQL.pm blib/lib/Data/Consumer/MySQL.pm \
+	  lib/Data/Consumer/pod2htmd.tmp blib/lib/Data/Consumer/pod2htmd.tmp \
+	  lib/Data/Consumer/MySQL.pm.html blib/lib/Data/Consumer/MySQL.pm.html \
+	  lib/Data/Consumer/pod2htmi.tmp blib/lib/Data/Consumer/pod2htmi.tmp 
 	$(NOECHO) $(TOUCH) pm_to_blib
 
 

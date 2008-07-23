@@ -2,7 +2,7 @@ package Data::Consumer;
 
 use warnings;
 use strict;
-use Carp;
+use Carp qw(confess cluck);
 use vars qw/$Debug $VERSION $Fail $Cmd/;
 
 # This code was formatted with the following perltidy options:
@@ -109,7 +109,7 @@ C<processed> state.
 
 The routines that must be defined for a new consumer type are C<new()>,
 C<reset()>, C<acquire()>, C<release()>, and C<_mark_as()>,
-C<_do_callback()>, and possibly C<_fix_sweeper()>.
+C<_do_callback()>>.
 
 =over 4
 
@@ -156,19 +156,6 @@ L<Data::Consumer::Dir> calls the callback with the arguments
 C<($consumer, $filespec, $filehandle, $filename)>. The point is that the
 end user should be passed the arguments that make sense, not necessarily
 the same thing for each consumer type.
-
-=item _fixup_sweeper
-
-L<Data::Consumer> has support for a "sweep-up" mode for handling things
-that were abandonded in the C<working> state and moving them to the
-C<failed> state. This is mostly a sanity check to prevent things like
-powerfailures and segfaults leaving an item in a partially or
-unprocessed state without it being properly marked as failed. In order
-to do this the L<Data::Consumer> subclass actually creates a private
-near clone of itself. C<_fix_sweeper()> is called in case the normal
-modifications done by the base class routine are not sufficient for a
-subclass. As an example L<Data::Consumer::MySQL> provides this hook
-while L<Data::Consumer::Dir> does not.
 
 =back
 
@@ -278,6 +265,8 @@ C<consume()> and C<proceed()>
 
 =item sweep => $bool
 
+*** NOTE CURRENTLY THIS OPTION IS DISABLED ***
+
 If this parameter is true, and there are four modes defined
 (C<unprocessed>, C<working>, C<processed>, C<failed>) then consume will
 perform a "sweep up" after every pass, which is responsible for moving
@@ -305,20 +294,112 @@ alias class mappings.
 
 =cut
 
-=head2 $class_or_object->debug_warn($level,@debug_lines)
 
-If C<Debug> is enabled and above C<$level> then print C<@debug_lines> to
-C<STDOUT> in a specific format that includes the class name of the
-caller and process id.
+
+=head2 $class_or_object->debug_warn_hook()
+
+Specify a callback to use to capture diagnostics data produced
+by a Data::Consumer object.
+
+If called as a class method sets the default object for all
+Data::Consumer objects that have not explicitly set a hook.
+
+If called as an object method sets the hook to use for that 
+object alone.
+
+Returns the current effective hook. Defaults to use
+the default_debug_warn() method for the object. Thus 
+it can be overriden by a subclass if necessary.
+
+The hook will be called with the arguments
+
+    ($consumer,$level,@lines)
+
+and is not expected to return anything.   
 
 =cut
 
-sub debug_warn {
+my $debug_warn_hook;
+sub debug_warn_hook {
+    my $self= shift;
+    if (@_) {
+        if (ref $self) {
+            $self->{debug_warn_hook}= shift;
+        } else {
+            $debug_warn_hook= shift;
+        }
+    }
+    if (ref $self and defined $self->{debug_warn_hook}) {
+        return $self->{debug_warn_hook};
+    }
+    return $debug_warn_hook || $self->can('default_debug_warn'); 
+}
+
+=head2 $class_or_object->default_debug_warn($level,$debug);
+
+Use warn to output diagnostics. Message includes the process id
+and the class name.
+
+=cut
+
+sub default_debug_warn {
     my $self= shift;
     my $level= shift;
-    if ( $Debug and $Debug >= $level ) {
+    cluck($level) if $level=~/\D/;
+    my $debug_level= $self->debug_level;
+    if ( $debug_level > $level ) {
         warn ref($self) || $self, "\t$$\t>>> $_\n" for @_;
     }
+}
+
+=head2 $class_or_object->debug_level($level,@debug_lines)
+
+Set the minimum debug level. 
+
+When called as an object method sets the value of that object
+alone. undef is distinct from 0 in that undef results in
+the global debug level being used for that object.
+
+When called as a class method sets the value for all objects
+which do not have a defined debug level. 
+
+Returns the current effective debug level for the object or
+class. 
+
+=cut
+
+
+sub debug_level {
+    my $self= shift;
+    if (@_) {
+        if (ref $self) {
+            $self->{debug_level}= shift;
+        } else {
+            $Debug= shift;
+        }
+    }
+    if (ref $self and defined $self->{debug_level}) {
+        return $self->{debug_level};
+    }
+    return $Debug || 0;
+
+}
+
+=head2 $class_or_object->debug_warn($level,@debug_lines)
+
+If the current debugging level is  above C<$level> then call
+the current debug_warn_hook() to output a set of diagnostic
+messages.
+
+=cut
+
+
+sub debug_warn {
+    my $self=shift;
+    my $level=shift;
+    my $hook=$self->debug_warn_hook;
+    my $pfx= ref $self ? $self->{debug_pfx} || '' : '';
+    $hook->($self,$level,map { $pfx.$_ } @_);
 }
 
 BEGIN {
@@ -688,14 +769,6 @@ If this callback returns C<true> then the other rules will be applied,
 and only if all other conditions from the constructor are satisfied
 will C<proceed()> itself return C<true>.
 
-=head2 $object->sweep()
-
-If the user has specified both a C<working> and a C<failed> state then
-this routine will move all lockable C<working> items and change them to
-the C<failed> state. This is to catch catastrophic failures where
-unprocessed items are left in the working state. Presumably this is a
-rare case.
-
 =head2 $object->runstats()
 
 Returns a reference to a hash of statistics about the last (or currently running)
@@ -770,7 +843,6 @@ sub consume {
                 $self->debug_warn(5, "Failed during \$self->process(\$callback): $@");
               }
         }
-        $self->_sweep() if $self->{sweep};
       } while $self->proceed( $runstats->{passes} )
           && $runstats->{processed_this_pass};
 
@@ -780,26 +852,6 @@ sub consume {
     return $runstats;
 }
 
-sub _fixup_sweeper {
-    ;    # no-op (semicolon prevents tidy from messing with this line)
-}
-
-sub _sweep {
-    my $self= shift;
-    return unless $self->{sweep};
-    unless ( $self->{sweeper} ) {
-        my $new= bless {%$self}, ref $self;
-
-        @$new{ 'unprocessed', 'processed' }= @$new{ 'working', 'failed' };
-        delete @$new{qw(proceed runstats working failed sweep sweeper)};
-        delete @$new{ grep { /^max-/ } keys %$new };
-        $new->{ max_passes }= 1;
-        $self->_fixup_sweeper($new);
-
-        $self->{sweeper}= $new;
-    }
-    $self->{sweeper}->consume( sub { $self->debug_warn( 5, "sweeping up $_[1]" ) } );
-}
 
 =head1 AUTHOR
 

@@ -202,8 +202,6 @@ sub new {
     $opts{processed}= 1
       unless exists $opts{processed};
 
-    $opts{sweep}= !grep { /_sql/ } keys %opts
-      unless exists $opts{sweep};
 
     unless ( $opts{select_sql} ) {
         my $flag_op;
@@ -265,11 +263,6 @@ sub new {
     return $self;
 }
 
-sub _fixup_sweeper {
-    my ( $self, $sweeper )= @_;
-    $sweeper->{select_args}[-1]= $self->{working};
-}
-
 =head2  $object->reset()
 
 Reset the state of the object.
@@ -311,6 +304,7 @@ sub acquire {
 
     $self->reset if !defined $self->{last_id};
     do {
+	$self->debug_warn( 5, "last_id was $self->{last_id}");
 	my ($id)= $dbh->selectrow_array( $self->{select_sql}, undef, @{ $self->{select_args} || [] },
 	    $self->{last_id} );
 	if ( defined $id ) {
@@ -344,8 +338,8 @@ sub release {
 
 sub _mark_as {
     my ( $self, $key, $id )= @_;
-
-    if ( $self->{$key} ) {
+    $self->debug_warn(5, "$key => $id");
+    if ( defined $self->{$key} ) {
         if ( ref $self->{$key} ) {
 
             # assume it must be a callback
@@ -353,7 +347,7 @@ sub _mark_as {
             $self->{$key}->( $self, $key, $self->{last_id}, $self->{dbh} );
             return;
         }
-        $self->debug_warn( 5, "marking '$id' as '$key'" );
+        $self->debug_warn( 5, "marking '$id' as '$key' ($self->{$key})" );
         my $res=
           $self->{dbh}
           ->do( $self->{update_sql}, undef, @{ $self->{update_args} || [] }, $self->{$key}, $id )
@@ -361,6 +355,7 @@ sub _mark_as {
           $self->error( "Failed to execute '$self->{update_sql}' with args '$self->{$key}','$id': "
               . $self->{dbh}->errstr() );
         0 + $res or $self->error("Update resulted in 0 records changing!");
+	$self->debug_warn( 5, "result: $res");
 
     }
 }

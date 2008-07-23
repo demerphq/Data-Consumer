@@ -13,6 +13,9 @@ Revision history for Data-Consumer
         Added support for 'leave', 'ignore', 'fail' and 'halt'. They probably
         could be better documented and tested.
 
+0.10 
+        Lots of changes. Fixed an important bug and disabled the broken sweep
+        functionality for now. Also silence some warnings on older perls.
 
 
 

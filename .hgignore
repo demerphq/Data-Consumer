@@ -2,3 +2,5 @@
 \.html$
 \.tmp$
 xaa
+blib
+Makefile

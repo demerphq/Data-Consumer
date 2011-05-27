@@ -1,10 +1,10 @@
 Changes
-MANIFEST
-Makefile.PL
-README
 lib/Data/Consumer.pm
 lib/Data/Consumer/Dir.pm
 lib/Data/Consumer/MySQL.pm
+Makefile.PL
+MANIFEST
+README
 t/00-load.t
 t/01-mysql.t
 t/02-mysql.t

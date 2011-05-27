@@ -23,5 +23,7 @@ Revision history for Data-Consumer
         a pipeline-fashion with multiple consumers working on items in
         various stages. If in doubt, upgrade.
 
-
+0.12    Fri Mar 27 2011
+        Note in documentation that an explicit lock_prefix should almost
+        always be specified.
 

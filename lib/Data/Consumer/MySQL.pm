@@ -26,11 +26,11 @@ Data::Consumer::MySQL - Data::Consumer implementation for a mysql database table
 
 =head1 VERSION
 
-Version 0.11
+Version 0.12
 
 =cut
 
-$VERSION= '0.11';
+$VERSION= '0.12';
 
 =head1 SYNOPSIS
 

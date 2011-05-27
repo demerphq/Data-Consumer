@@ -17,6 +17,11 @@ Revision history for Data-Consumer
         Lots of changes. Fixed an important bug and disabled the broken sweep
         functionality for now. Also silence some warnings on older perls.
 
+0.11    Fri Mar 27 2011
+        Fix SELECT GET_LOCK order-of-evaluation issue.
+        This is an important bug fix if you're running Data::Consumer in
+        a pipeline-fashion with multiple consumers working on items in
+        various stages. If in doubt, upgrade.
 
 
 

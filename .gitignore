@@ -1,4 +1,7 @@
 Makefile
+Makefile.old
+Makefile.back
+MANIFEST.bak
 blib/*
 pm_to_blib
 .*.swp

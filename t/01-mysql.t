@@ -99,7 +99,7 @@ if ( $child ) {
 
 $child and diag("This will take around 30 seconds\n");
 $debug and Data::Consumer->debug_warn(0,"starting processing\n");
-$Data::Consumer::Debug=5 if $debug;
+$Data::Consumer::Debug=10 if $debug;
 
 my %xargs;
 %xargs=qw(type MySQL) if $class_to_test;
@@ -116,8 +116,11 @@ my $consumer = $class_to_test->new(
 $consumer->consume(sub { 
     my ($consumer,$id,$dbh) = @_; 
     $debug  and $consumer->debug_warn(0,"*** processing '$id'"); 
+    $debug and $consumer->debug_warn(0,$id,Dumper($dbh->selectrow_arrayref("select IS_USED_LOCK(CONCAT_WS('=','$0-$table',$id))")));
     sleep(1);
     $dbh->do("UPDATE `$table` SET `n` = `n` + 1 WHERE `id` = ?", undef, $id);
+
+    $debug  and $consumer->debug_warn(0,"*** finished processing '$id'");
 });
 
 

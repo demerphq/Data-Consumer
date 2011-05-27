@@ -26,11 +26,11 @@ Data::Consumer::MySQL - Data::Consumer implementation for a mysql database table
 
 =head1 VERSION
 
-Version 0.09
+Version 0.11
 
 =cut
 
-$VERSION= '0.09';
+$VERSION= '0.11';
 
 =head1 SYNOPSIS
 
@@ -392,7 +392,7 @@ Igor Sutton <IZUT@cpan.org> for ideas, testing and support.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2008 Yves Orton, all rights reserved.
+Copyright 2008, 2010, 2011 Yves Orton, all rights reserved.
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

@@ -91,6 +91,12 @@ an object is processed or not.
 
 The prefix to use for the mysql locks. Defaults to C<$0-$table>.
 
+It is B<strongly> recommended that end-users of this module explicitly
+specify a lock_prefix in production environments. A multi-process
+system relying on mutual exclusion B<will> run into problems when
+consuming from the same source if $0 and $table are not identical
+between workers.
+
 =item unprocessed => 0
 
 The value of the C<flag_field> which indicates that an item is not

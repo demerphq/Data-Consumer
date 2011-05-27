@@ -41,6 +41,7 @@ $VERSION= '0.12';
         table => 'T',
         id_field= > 'id',
         flag_field => 'done',
+        lock_prefix => $worker_name,
         unprocessed => 0,
         working => 1,
         processed => 2,
@@ -95,7 +96,8 @@ It is B<strongly> recommended that end-users of this module explicitly
 specify a lock_prefix in production environments. A multi-process
 system relying on mutual exclusion B<will> run into problems when
 consuming from the same source if $0 and $table are not identical
-between workers.
+between workers. Generally, using the name of the consuming module
+should suffice (e.g. Your::Data::Consumer::Worker).
 
 =item unprocessed => 0
 

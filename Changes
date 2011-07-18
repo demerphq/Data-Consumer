@@ -1,5 +1,8 @@
 Revision history for Data-Consumer
 
+        Fixed bug in leave() implementation: The status for 'unprocessed'
+        could previously not be '0'.
+
 0.12    Fri Mar 27 2011
         Note in documentation that an explicit lock_prefix should almost
         always be specified.

@@ -612,7 +612,7 @@ Returns $consumer. Will die if not 'unprocessed' state is defined.
 
 sub leave {
     my $self= shift;
-    confess("Can't leave as 'unprocessed' is undefined!") if !$self->{unprocessed};
+    confess("Can't leave as 'unprocessed' is undefined!") if not defined $self->{unprocessed};
     $self->{defer_leave}++;
     return $self;
 }

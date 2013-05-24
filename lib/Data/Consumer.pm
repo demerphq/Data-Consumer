@@ -571,6 +571,7 @@ C<process()>
 sub process {
     my $self= shift;
     my $callback= shift;
+    delete $self->{fail};
     my $id= $self->last_id;
     defined $id
       or $self->error("Undefined last_id. Nothing acquired yet?");

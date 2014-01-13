@@ -58,7 +58,7 @@ The basic idea is that one need only use, or in the case of a feed type
 not already supported, define a L<Data::Consumer> subclass
 which implements a few reasonably well defined primitive methods which 
 handle the required tasks, and then the L<Data::Consumer> methods use 
-those to provide a DWIMily consistant interface to the end consumer.
+those to provide a DWIMily consistent interface to the end consumer.
 
 Currently L<Data::Consumer> is distributed with two subclasses,
 L<Data::Consumer::MySQL> for handling records in a MySQL db (using the
@@ -72,13 +72,13 @@ arguments, and then call consume with a callback.
 =head2 The Consumer Pattern
 
 The consumer pattern is where code wants to consume an 'atomic' resource
-piece by piece. The consuming codes doesnt really want to worry much 
-about how they got the piece a task that should be handled by the framework. 
+piece by piece. The consuming code doesn't really want to worry much
+about how they got the piece, a task that should be handled by the framework.
 The consumer subclasses assume that the resource can be modeled as a 
 queue (that there is some ordering principle by which they can be processed 
 in a predictable sequence). The consume pattern in full glory is something 
 very close to the following following pseudo code. The items marked with 
-asterixs are where user callbacks may be invoked:
+asterisks are where user callbacks may be invoked:
 
     DO
         RESET TO THE BEGINNING OF THE QUEUE
@@ -109,7 +109,7 @@ C<processed> state.
 
 The routines that must be defined for a new consumer type are C<new()>,
 C<reset()>, C<acquire()>, C<release()>, and C<_mark_as()>,
-C<_do_callback()>>.
+C<_do_callback()>.
 
 =over 4
 
@@ -301,15 +301,15 @@ alias class mappings.
 Specify a callback to use to capture diagnostics data produced
 by a Data::Consumer object.
 
-If called as a class method sets the default object for all
+If called as a class method, sets the default object for all
 Data::Consumer objects that have not explicitly set a hook.
 
-If called as an object method sets the hook to use for that 
+If called as an object method, sets the hook to use for that
 object alone.
 
 Returns the current effective hook. Defaults to use
-the default_debug_warn() method for the object. Thus 
-it can be overriden by a subclass if necessary.
+the C<default_debug_warn()> method for the object. Thus
+it can be overridden by a subclass if necessary.
 
 The hook will be called with the arguments
 
@@ -563,7 +563,7 @@ this allows the callback to send specific signals to consume, specifically
              in the situation where there might be $SIG{__DIE__} hooks to worry about.
     halt   : stop the consume() process after this has been executed
 
-For further details always consult the relevent subclasses documentation for
+For further details always consult the relevant subclasses documentation for
 C<process()>
 
 =cut
@@ -623,10 +623,10 @@ sub leave {
 This can used to cause acquire to ignore each item in @list. 
 
 If @list is empty then it is assumed it is being called from
-within consume/process and and marks the currently acquired item
-as ignored and calls $consumer->leave().
+within consume/process and marks the currently acquired item
+as ignored and calls C<< $consumer->leave() >>.
 
-Returns $consumer. Will die if not 'unprocessed' state is defined. 
+Returns $consumer. Will die if no 'unprocessed' state is defined.
 
 =cut
 
@@ -647,9 +647,9 @@ sub ignore {
 
 =head2 $consumer->fail($message)
 
-Same as doing die($message) from within a consume/process callback except 
-that no exception is thrown (no $SIG{__DIE__} callbacks are invoked) and 
-the error is defered until the callback actually returns.
+Same as doing C<die($message)> from within a consume/process callback except
+that no exception is thrown (no C<$SIG{__DIE__}> callbacks are invoked) and
+the error is deferred until the callback actually returns.
 
 Typically used as
 
@@ -711,9 +711,9 @@ Reset the state of the object.
 
 =head2 $object->acquire()
 
-Aquire an item to be processed.
+Acquire an item to be processed.
 
-returns an identifier to be used to identify the item acquired.
+Returns an identifier to be used to identify the item acquired.
 
 =head2 $object->release()
 

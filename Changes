@@ -1,5 +1,8 @@
 Revision history for Data-Consumer
 
+0.14    Sun Oct 12 2014
+        Reset the 'fail' flag before processing any new item
+
 0.13    Mon Jul 18 2011
         Fixed bug in leave() implementation: The status for 'unprocessed'
         could previously not be '0'.

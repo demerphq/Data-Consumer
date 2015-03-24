@@ -526,7 +526,7 @@ BEGIN {
         defined $id
           or confess "Nothing acquired to be marked as '$key' in mark_as.\n";
 
-        return unless $self->{$key};
+        return unless defined $self->{$key};
         return $self->_mark_as( $key, $id );
     }
 }

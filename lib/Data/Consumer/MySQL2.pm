@@ -1,4 +1,4 @@
-package Data::Consumer::MySQL;
+package Data::Consumer::MySQL2;
 
 use warnings;
 use strict;
@@ -22,7 +22,7 @@ BEGIN {
 
 =head1 NAME
 
-Data::Consumer::MySQL - DEPRECATED Data::Consumer implementation for a mysql database table resource
+Data::Consumer::MySQL2 - Data::Consumer implementation for a mysql database table resource
 
 =head1 VERSION
 
@@ -34,9 +34,9 @@ $VERSION= '0.15';
 
 =head1 SYNOPSIS
 
-    use Data::Consumer::MySQL; # deprecated, use Data::Consumer::MySQL2 instead!
+    use Data::Consumer::MySQL2;
 
-    my $consumer = Data::Consumer::MySQL->new(
+    my $consumer = Data::Consumer::MySQL2->new(
         dbh => $dbh,
         table => 'T',
         id_field= > 'id',
@@ -53,16 +53,12 @@ $VERSION= '0.15';
         print "processed $id\n";
     } );
 
-=head1 DEPRECATED MODULE
-
-This module is deprecated in favour of L<Data::Consumer::MySQL2>, you are strongly
-advised to migrate to the new module.
 
 =head1 FUNCTIONS
 
 =head2 CLASS->new(%opts)
 
-Constructor for a L<Data::Consumer::MySQL> instance.
+Constructor for a L<Data::Consumer::MySQL2> instance.
 
 Options are as follows:
 
@@ -108,44 +104,20 @@ should suffice (e.g. Your::Data::Consumer::Worker).
 The value of the C<flag_field> which indicates that an item is not
 processed. If not provided defaults to C<0>.
 
-Optional.
-
-May also be a callback which is responsible for marking the item as
-unprocessed.  This will be called with the arguments C<($consumer,
-'unprocessed', $id, $dbh)>
-
 =item working => 1
 
 The value of the C<flag_field> which indicates that an item is currently
 being processed. If not provided defaults to C<1>.
-
-Optional.
-
-May also be a callback which is responsible for marking the item as
-working.  This will be called with the arguments C<($consumer,
-'working', $id, $dfh)>.
-
 
 =item processed => 2
 
 The value of the C<flag_field> which indicates that an item has been
 successfully processed. If not provided defaults to C<2>.
 
-Optional.
-
-May also be a callback which is responsible for marking the item as processed.
-This will be called with the arguments ($consumer,'processed',$id,$dfh)
-
 =item failed => 3
 
 The value of the C<flag_field> which indicates that processing of an
 item has failed. If not provided defaults to C<3>.
-
-Optional.
-
-May also be a callback which is responsible for marking the item as
-failed.  This will be called with the arguments C<($consumer, 'failed',
-$id, $dfh)>
 
 =item init_id => 0
 
@@ -162,8 +134,28 @@ SQL select query which can be executed to acquire an item to be processed. Shoul
 return a single record with a single column contain the id to be processed, at the
 same time it should ensure that a lock on the id is created.
 
-The query will be executed with the arguments contained in select_args array, followed
-by the id of the last processed item.
+The query will be executed with the id of the last processed item, followed by the arguments
+provided by the C<select_args> property.
+
+=item check_sql
+
+=item check_args
+
+These arguments are optional, unless you specify C<select_sql> yourself, in which case
+it is required you also specify C<check_sql> as well.
+
+SQL select query which can be executed to verify that the item to be processed still has
+the expected flag fields set appropriately.
+
+There is a very annoying and sublte race condition (possibly only in modern MySQL's) which
+means that is possible that the query used for C<select_sql> might return an id for a record
+which has already been processed. This query is used to avoid that race condition.
+
+The query should validate any flag fields or constraints specified in C<select_sql> are
+true, it should return only the id of the record to be processed.
+
+The query will be executed with the id of the item to process, followed by the arguments
+provided by the C<check_args> property.
 
 =item update_sql
 
@@ -194,8 +186,16 @@ sub new {
     my ( $class, %opts )= @_;
     my $self= $class->SUPER::new();    # let Data::Consumer bless the hash
 
-    unless ($opts->{no_deprecated_warnings_please}) {
-        warn "$class is deprecated, you are strongly encouraged to migrate to Data::Consumer::MySQL2";
+    my @bad;
+    foreach my $opt (qw(unprocessed processed working failed lock_prefix)) {
+        if (ref $opts{$opt}) {
+            push @bad, "option '$opt' is not allowed to be a ref in DC::MySQL2";
+        } elsif (!defined $opts{$opt}) {
+            push @bad, "option '$opt' is not allowed to be missing or undefined in DC::MySQL2";
+        }
+    }
+    if (@bad) {
+        confess "Bad option in $class->new(): " . join "\n", @bad;
     }
 
     if ( !$opts{dbh} and $opts{connect} ) {
@@ -213,51 +213,51 @@ sub new {
     $opts{id_field}   ||= 'id';
     $opts{flag_field} ||= 'process_state';
     $opts{init_id}= 0 unless exists $opts{init_id};
-    $opts{lock_prefix} ||= join "-", $0, ( $opts{table} || () );
 
-    $opts{processed}= 1
-      unless exists $opts{processed};
-
+    if (!$opts{check_sql} and $opts{select_sql}) {
+        confess "In $class if you specify 'select_sql' you MUST provide 'check_sql' as well!";
+    }
 
     unless ( $opts{select_sql} ) {
-        my $flag_op;
-        my @flag_val;
-        if ( exists $opts{unprocessed} ) {
-            $opts{flag_op}= '= ?';
-            @flag_val= ( $opts{unprocessed} );
-        } else {
-            @flag_val= map { exists $opts{$_} ? $opts{$_} : () } qw(processed working failed);
-            if ( @flag_val == 1 ) {
-                $opts{flag_op}= '!= ?';
-            } else {
-                $opts{flag_op}= 'not in (' . join( ', ', ('?') x @flag_val ) . ')';
-            }
-        }
-
         $opts{select_sql}= do {
             local $_= '
-        SELECT
-        $id_field
-        FROM $table
-        WHERE
-        $id_field > ?
-        AND $flag_field $flag_op
-        AND GET_LOCK( CONCAT_WS("=", ?, $id_field ), 0) != 0
-        LIMIT 1
-        ';
+                SELECT
+                $id_field
+                FROM $table
+                WHERE
+                $id_field > ?
+                AND $flag_field = ?
+                AND GET_LOCK( CONCAT_WS("=", ?, $id_field ), 0) != 0
+                LIMIT 1
+            ';
             s/^\s+//mg;
             s/\$(\w+)/$opts{$1} || confess "Option $1 is mandatory"/ge;
             $_;
         };
-        $opts{select_args}= [ @flag_val, $opts{lock_prefix} ];
+        $opts{select_args}= [ $opts{unprocessed}, $opts{lock_prefix} ];
+
+        $opts{check_sql}= do {
+            local $_= '
+                SELECT
+                $id_field
+                FROM $table
+                WHERE
+                $id_field = ?
+                AND $flag_field = ?
+            ';
+            s/^\s+//mg;
+            s/\$(\w+)/$opts{$1} || confess "Option $1 is mandatory"/ge;
+            $_;
+        };
+        $opts{check_args}= [ $opts{unprocessed} ];
     }
 
     $opts{update_sql} ||= do {
         local $_= '
-        UPDATE $table
-        SET $flag_field = ?
-        WHERE
-        $id_field = ?
+            UPDATE $table
+            SET $flag_field = ?
+            WHERE
+            $id_field = ?
         ';
         s/^\s+//mg;
         s/\$(\w+)/$opts{$1} || confess "Option $1 is mandatory"/ge;
@@ -266,8 +266,8 @@ sub new {
     if ( !$opts{release_sql} ) {
         $opts{release_sql}= do {
             local $_= '
-        SELECT RELEASE_LOCK( CONCAT_WS("=", ?, ? ) )
-        ';
+                SELECT RELEASE_LOCK( CONCAT_WS("=", ?, ? ) )
+            ';
             s/^\s+//mg;
             s/\$(\w+)/$opts{$1} || confess "Option $1 is mandatory"/ge;
             $_;
@@ -319,20 +319,27 @@ sub acquire {
     my $dbh= $self->{dbh};
 
     $self->reset if !defined $self->{last_id};
-    do {
-	$self->debug_warn( 5, "last_id was $self->{last_id}");
-	my ($id)= $dbh->selectrow_array( $self->{select_sql}, undef, $self->{last_id}, @{ $self->{select_args} || [] } );
-	if ( defined $id ) {
-	    $self->{last_lock}= $id;
-	    $self->debug_warn( 5, "acquired '$id'" );
-	} else {
-	    $self->debug_warn( 5, "acquire failed -- resource has been exhausted" );
-	}
-    
-	$self->{last_id}= $id;
-    } while $self->is_ignored($self->{last_id});
+    while (1) {
+        $self->debug_warn( 5, "last_id was $self->{last_id}");
+        my ($id)= $dbh->selectrow_array( $self->{select_sql}, undef, $self->{last_id}, @{ $self->{select_args} || [] } );
+        if ( defined $id ) {
+            next if $self->is_ignored($id);
+            my ($got_id) = $dbh->selectrow_array( $self->{check_sql}, undef, $id, @{ $self->{check_args} || [] } );
+            if ( not defined $got_id) {
+                $self->debug_warn(5, "race condition avoided for '$id', check_sql and select_sql did not line up!");
+                next;
+            }
+            $self->{last_lock}= $id;
+            $self->debug_warn( 5, "acquired '$id'" );
+        } else {
+            $self->debug_warn( 5, "acquire failed -- resource has been exhausted" );
+        }
+        $self->{last_id}= $id;
+        last;
+    }
     return $self->{last_id};
 }
+
 
 sub release {
     my $self= shift;
@@ -355,22 +362,13 @@ sub _mark_as {
     my ( $self, $key, $id )= @_;
     $self->debug_warn(5, "$key => $id");
     if ( defined $self->{$key} ) {
-        if ( ref $self->{$key} ) {
-
-            # assume it must be a callback
-            $self->debug_warn( 5, "executing mark_as callback for '$key'" );
-            $self->{$key}->( $self, $key, $self->{last_id}, $self->{dbh} );
-            return;
-        }
         $self->debug_warn( 5, "marking '$id' as '$key' ($self->{$key})" );
-        my $res=
-          $self->{dbh}
-          ->do( $self->{update_sql}, undef, @{ $self->{update_args} || [] }, $self->{$key}, $id )
+        my $res= $self->{dbh}->do( $self->{update_sql}, undef, @{ $self->{update_args} || [] }, $self->{$key}, $id )
           or
           $self->error( "Failed to execute '$self->{update_sql}' with args '$self->{$key}','$id': "
               . $self->{dbh}->errstr() );
         0 + $res or $self->error("Update resulted in 0 records changing!");
-	$self->debug_warn( 5, "result: $res");
+        $self->debug_warn( 5, "result: $res");
 
     }
 }
@@ -414,5 +412,5 @@ under the same terms as Perl itself.
 
 =cut
 
-1;    # End of Data::Consumer::MySQL
+1;    # End of Data::Consumer::MySQL2
 

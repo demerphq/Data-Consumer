@@ -15,11 +15,11 @@ Data::Consumer - Repeatedly consume a data resource in a robust way
 
 =head1 VERSION
 
-Version 0.14
+Version 0.15
 
 =cut
 
-$VERSION= '0.14';
+$VERSION= '0.15';
 
 =head1 SYNOPSIS
 
@@ -60,10 +60,12 @@ which implements a few reasonably well defined primitive methods which
 handle the required tasks, and then the L<Data::Consumer> methods use 
 those to provide a DWIMily consistent interface to the end consumer.
 
-Currently L<Data::Consumer> is distributed with two subclasses,
-L<Data::Consumer::MySQL> for handling records in a MySQL db (using the
-MySQL C<GET_LOCK()> function), and L<Data::Consumer::Dir> for handling
-a drop directory scenario (like for FTP or a mail directory).
+Currently L<Data::Consumer> is distributed with two subclasses, (well
+three actually, but L<Data::Consumer::MySQL> is deprecated in favour
+of L<Data::Consumer::MySQL2>) L<Data::Consumer::MySQL2> for handling
+records in a MySQL db (using the MySQL C<GET_LOCK()> function), and
+L<Data::Consumer::Dir> for handling a drop directory scenario (like
+for FTP or a mail directory).
 
 Once a resource type has been defined as a L<Data::Consumer> subclass
 the use pattern is to construct the subclass with the appropriate

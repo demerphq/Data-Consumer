@@ -1,5 +1,16 @@
 Revision history for Data-Consumer
 
+0.15    Fri May  8 2015
+        Fork Data::Consumer::MySQL into Data::Consumer::MySQL2. There
+        were and are subtle issues with the implementation of DC::MySQL.
+        As we have a lot of code using it the easiest way is to fork
+        the module and fix it in the new version. *Most* old code should
+        be unaffected. However if you are processing very quickly, with
+        many workers, on a newer MySQL especially, then it is possible
+        that two workers might process the same record twice due to a subtle
+        race condition in MySQL query plan evaluation. The new version in
+        MySQL2 should be robust to this problem.
+
 0.14    Sun Oct 12 2014
         Reset the 'fail' flag before processing any new item
 

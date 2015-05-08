@@ -11,7 +11,10 @@ our %process_state;
 our @connect_args;
 our $table;
 our $class_to_test;
-eval 'use Data::Consumer::MySQL; 1' or die $@ 
+
+my $mod= "Data::Consumer::MySQL2";
+
+eval "use $mod; 1" or die $@
     if !$class_to_test;
 my $conf_file = 'mysql.pldat';
 if (-e $conf_file) {
@@ -47,14 +50,15 @@ CREATE TABLE `$table` (
 )
 ENDOFSQL
 
+defined(my $unprocessed= $process_state{unprocessed}) or die "Must have a 'unprocessed' state to test!";
 # 100 rows
 my $insert = <<"ENDOFSQL";
 INSERT INTO `$table` (done) VALUES 
-        (0),(0),(0),(0),(0),(0),(0),(0),(0),(0),
-        (0),(0),(0),(0),(0),(0),(0),(0),(0),(0),
-        (0),(0),(0),(0),(0),(0),(0),(0),(0),(0),
-        (0),(0),(0),(0),(0),(0),(0),(0),(0),(0),
-        (0),(0),(0),(0),(0),(0),(0),(0),(0),(0)
+        ($unprocessed),($unprocessed),($unprocessed),($unprocessed),($unprocessed),($unprocessed),($unprocessed),($unprocessed),($unprocessed),($unprocessed),
+        ($unprocessed),($unprocessed),($unprocessed),($unprocessed),($unprocessed),($unprocessed),($unprocessed),($unprocessed),($unprocessed),($unprocessed),
+        ($unprocessed),($unprocessed),($unprocessed),($unprocessed),($unprocessed),($unprocessed),($unprocessed),($unprocessed),($unprocessed),($unprocessed),
+        ($unprocessed),($unprocessed),($unprocessed),($unprocessed),($unprocessed),($unprocessed),($unprocessed),($unprocessed),($unprocessed),($unprocessed),
+        ($unprocessed),($unprocessed),($unprocessed),($unprocessed),($unprocessed),($unprocessed),($unprocessed),($unprocessed),($unprocessed),($unprocessed)
 ENDOFSQL
 
 $insert.=",($_)" for @fake_error; 
@@ -102,14 +106,15 @@ $debug and Data::Consumer->debug_warn(0,"starting processing\n");
 $Data::Consumer::Debug=10 if $debug;
 
 my %xargs;
-%xargs=qw(type MySQL) if $class_to_test;
-$class_to_test||="Data::Consumer::MySQL";
+%xargs=qw(type MySQL2) if $class_to_test;
+$class_to_test||="Data::Consumer::MySQL2";
 
 my $consumer = $class_to_test->new(
     %xargs,
     connect     => \@connect_args,
     table       => $table,
     flag_field  => 'done',
+    lock_prefix => "test_lock",
     %process_state,
 );
 

@@ -2,7 +2,10 @@ use strict;
 use warnings;
 use Cwd;
 our %process_state = (
+    unprocessed => 94,
     processed   => 10,
+    working => 123,
+    failed => 666,
 );
 
 our $object='Data::Consumer';

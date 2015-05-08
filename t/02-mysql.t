@@ -2,9 +2,10 @@ use strict;
 use warnings;
 use Cwd;
 our %process_state = (
-    unprocessed => 0,
-    working     => 1,
-    processed   => 2,
+    unprocessed => 1,
+    working     => 0,
+    processed   => 3,
+    failed      => 4,
 );
 %process_state = %process_state; # silence warnings on 5.6.2
 

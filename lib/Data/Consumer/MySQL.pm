@@ -194,7 +194,7 @@ sub new {
     my ( $class, %opts )= @_;
     my $self= $class->SUPER::new();    # let Data::Consumer bless the hash
 
-    unless ($opts->{no_deprecated_warnings_please}) {
+    unless ($opts{no_deprecated_warnings_please}) {
         warn "$class is deprecated, you are strongly encouraged to migrate to Data::Consumer::MySQL2";
     }
 

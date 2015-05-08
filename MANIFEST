@@ -3,6 +3,7 @@ Changes
 lib/Data/Consumer.pm
 lib/Data/Consumer/Dir.pm
 lib/Data/Consumer/MySQL.pm
+lib/Data/Consumer/MySQL2.pm
 Makefile.PL
 MANIFEST
 mysql.pldat

@@ -30,11 +30,11 @@ Data::Consumer::Dir - Data::Consumer implementation for a directory of files res
 
 =head1 VERSION
 
-Version 0.14
+Version 0.16
 
 =cut
 
-$VERSION= '0.14';
+$VERSION= '0.16';
 
 =head1 SYNOPSIS
 

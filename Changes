@@ -1,5 +1,10 @@
 Revision history for Data-Consumer
 
+0.16    Fri Jun 24 2016
+        The deprecated warning behavior of Data::Consumer::MySQL was
+        a major blocker to upgrading Data::Consumer, so it has been
+        changed to be opt in. See the docs for Data::Consumer::MySQL.
+
 0.15    Fri May  8 2015
         Fork Data::Consumer::MySQL into Data::Consumer::MySQL2. There
         were and are subtle issues with the implementation of DC::MySQL.

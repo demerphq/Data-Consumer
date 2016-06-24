@@ -6,7 +6,7 @@ use DBI;
 use Carp qw(confess);
 use warnings FATAL => 'all';
 use base 'Data::Consumer';
-use vars qw/$Debug $VERSION $Cmd $Fail/;
+use vars qw/$Debug $VERSION $Cmd $Fail $DEPRECATED_WARNING_ON_USE/;
 
 # This code was formatted with the following perltidy options:
 # -ple -ce -bbb -bbc -bbs -nolq -l=100 -noll -nola -nwls='=' -isbc -nolc -otr -kis
@@ -26,11 +26,11 @@ Data::Consumer::MySQL - DEPRECATED Data::Consumer implementation for a mysql dat
 
 =head1 VERSION
 
-Version 0.15
+Version 0.16
 
 =cut
 
-$VERSION= '0.15';
+$VERSION= '0.16';
 
 =head1 SYNOPSIS
 
@@ -58,6 +58,15 @@ $VERSION= '0.15';
 This module is deprecated in favour of L<Data::Consumer::MySQL2>, you are strongly
 advised to migrate to the new module.
 
+In order to make it easier to find code that uses this module you can set
+the $DEPRECATED_WARNING_ON_USE var to true like this:
+
+    $Data::Consumer::MySQL::DEPRECATED_WARNING_ON_USE = 1
+
+and any time a new consumer is created a warning will be generated. You can
+silence this warning on a per-object basis by setting the 'no_deprecated_warnings_please'
+option to true in the constructor.
+
 =head1 FUNCTIONS
 
 =head2 CLASS->new(%opts)
@@ -67,6 +76,10 @@ Constructor for a L<Data::Consumer::MySQL> instance.
 Options are as follows:
 
 =over 4
+
+=item no_deprecated_warnings_please => 1
+
+Disable deprecated warnings should they be enabled in your environment.
 
 =item connect => \@connect_args
 
@@ -194,7 +207,7 @@ sub new {
     my ( $class, %opts )= @_;
     my $self= $class->SUPER::new();    # let Data::Consumer bless the hash
 
-    unless ($opts{no_deprecated_warnings_please}) {
+    if (!$opts{no_deprecated_warnings_please} and $DEPRECATED_WARNING_ON_USE) {
         warn "$class is deprecated, you are strongly encouraged to migrate to Data::Consumer::MySQL2";
     }
 

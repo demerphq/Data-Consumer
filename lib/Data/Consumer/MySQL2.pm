@@ -322,11 +322,10 @@ sub acquire {
     while (1) {
         $self->debug_warn( 5, "last_id was $self->{last_id}");
         my ($id)= $dbh->selectrow_array( $self->{select_sql}, undef, $self->{last_id}, @{ $self->{select_args} || [] } );
+        $self->{last_id}= $id;
         if ( defined $id ) {
-            if ( $self->is_ignored($id) ) {
-                $self->{last_id}= $id;
-                next;
-            }
+            next if $self->is_ignored($id);
+
             my ($got_id) = $dbh->selectrow_array( $self->{check_sql}, undef, $id, @{ $self->{check_args} || [] } );
             if ( not defined $got_id) {
                 $self->debug_warn(5, "race condition avoided for '$id', check_sql and select_sql did not line up!");
@@ -337,7 +336,6 @@ sub acquire {
         } else {
             $self->debug_warn( 5, "acquire failed -- resource has been exhausted" );
         }
-        $self->{last_id}= $id;
         last;
     }
     return $self->{last_id};

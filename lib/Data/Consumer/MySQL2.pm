@@ -3,7 +3,7 @@ package Data::Consumer::MySQL2;
 use warnings;
 use strict;
 use DBI;
-use Carp qw(confess);
+use Carp qw(confess cluck);
 use warnings FATAL => 'all';
 use base 'Data::Consumer';
 use vars qw/$Debug $VERSION $Cmd $Fail/;
@@ -157,7 +157,7 @@ These arguments are optional.
 
 SQL select query which can be used to clear the currently held lock.
 
-Will be called with the arguments provided in release_args, plust the id.
+Will be called with the arguments provided in release_args, plus the id.
 
 =back
 
@@ -194,6 +194,9 @@ sub new {
     $opts{id_field}   ||= 'id';
     $opts{flag_field} ||= 'process_state';
     $opts{init_id}= 0 unless exists $opts{init_id};
+
+    if ($opts{lock_prefix}) { cluck "Ignoring 'lock_prefix' this, version does not use GET_LOCK()" }
+    if ($opts{check_sql} || $opts{check_args}) { confess "This version does not support 'check_sql', 'check_args'" }
 
     unless ( $opts{select_sql} ) {
         $opts{select_sql}= do {

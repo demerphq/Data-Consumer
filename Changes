@@ -1,5 +1,10 @@
 Revision history for Data-Consumer
 
+0.18    ????
+        Remove GET_LOCK from MySQL2 - as of 5.7 the GET_LOCK() trick
+        doesn't work, as a lock request does not free up a previously
+        held lock.
+
 0.17    Wed Nov 1 2017
         Fix a bug with ignored in MySQL2, thanks to Maksym Davydov
 

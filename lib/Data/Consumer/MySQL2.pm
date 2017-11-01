@@ -26,11 +26,11 @@ Data::Consumer::MySQL2 - Data::Consumer implementation for a mysql database tabl
 
 =head1 VERSION
 
-Version 0.17
+Version 0.18
 
 =cut
 
-$VERSION= '0.17';
+$VERSION= '0.18';
 
 =head1 SYNOPSIS
 
@@ -138,6 +138,20 @@ this query is 0, item will be skipped.
 The query will be executed with the id of the item returned by select_sql,
 followed by the arguments provided by the C<acquire_args> property.
 
+=item release_acquire_sql
+
+=item release_acquire_args
+
+These arguments are optional, and will be synthesized from acquire_sql/acquire_args
+if not provided.
+
+SQL update query that releases a claimed item in the table. If number of rows updated by
+this query is 0, item will be skipped.
+
+The query will be executed with the id of the item returned by select_sql,
+followed by the arguments provided by the C<release_acquire_args> property. If the latter
+is not provided then this will be the *list* reverse of the acquire_args.
+
 =item update_sql
 
 =item update_args
@@ -148,16 +162,6 @@ SQL update query which can be used to change the status the record being process
 
 Will be executed with the arguments provided in update_args followed the new status,
 and the id.
-
-=item release_sql
-
-=item release_args
-
-These arguments are optional.
-
-SQL select query which can be used to clear the currently held lock.
-
-Will be called with the arguments provided in release_args, plus the id.
 
 =back
 
@@ -195,8 +199,9 @@ sub new {
     $opts{flag_field} ||= 'process_state';
     $opts{init_id}= 0 unless exists $opts{init_id};
 
-    if ($opts{lock_prefix}) { cluck "Ignoring 'lock_prefix' this, version does not use GET_LOCK()" }
+    if ($opts{lock_prefix}) { cluck "Ignoring 'lock_prefix' this version does not use GET_LOCK()" }
     if ($opts{check_sql} || $opts{check_args}) { confess "This version does not support 'check_sql', 'check_args'" }
+    if ($opts{release_sql} || $opts{release_args}) { confess "This version does not support 'release_sql', 'release_args'" }
 
     unless ( $opts{select_sql} ) {
         $opts{select_sql}= do {
@@ -231,6 +236,10 @@ sub new {
         };
         $opts{acquire_args}= [ $opts{working}, $opts{unprocessed} ];
     }
+    unless ( exists $opts{release_acquire_sql} ) {
+        $opts{release_acquire_sql}= $opts{acquire_sql};
+        $opts{release_acquire_args}= [ reverse @{$opts{acquire_args}} ];
+    }
 
     $opts{update_sql} ||= do {
         local $_= '
@@ -261,7 +270,7 @@ Returns an identifier to be used to identify the item acquired.
 
 =head2 $object->release()
 
-Release any locks on the currently held item.
+Release any locks on the currently held item. This is called by reset, and at the end of processing.
 
 Normally there is no need to call this directly.
 
@@ -314,17 +323,19 @@ sub acquire {
 sub release {
     my $self= shift;
 
-    return 0 unless exists $self->{last_id} && defined $self->{release_sql};
+    my $id= delete $self->{last_id};
 
-    my $res=
-      $self->{dbh}
-      ->do( $self->{release_sql}, undef, @{ $self->{release_args} || [] }, $self->{last_lock} );
-    defined $res
-      or $self->error( "Failed to execute '$self->{release_sql}' with args '$self->{last_lock}': "
-          . $self->{dbh}->errstr() );
+    return 0 unless $self->{release_acquire_sql};
 
-    $self->debug_warn( 5, "release lock '$self->{last_lock}' status: $res" );    # XXX
-    delete $self->{last_lock};
+    my $dbh= $self->{dbh};
+
+    my $released = $dbh->do( $self->{release_acquire_sql}, undef, @{ $self->{release_acquire_args} || [] }, $id );
+    if ($released != 1) {
+        $self->debug_warn(5, "failed to release '$id', release_acquire_sql updated $released rows");
+    } else {
+        $self->debug_warn( 5, "released '$id'" );
+    }
+
     return 1;
 }
 

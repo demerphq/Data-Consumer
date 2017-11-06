@@ -136,7 +136,8 @@ ignored.
 
 =item release
 
-This routine is to release any held locks in the object. 
+This routine is to release any held locks in the object.  It is called at the very end of
+processing, and by reset.
 
 =item _mark_as
 
@@ -721,7 +722,8 @@ Returns an identifier to be used to identify the item acquired.
 
 Release any locks on the currently held item.
 
-Normally there is no need to call this directly.
+Normally there is no need to call this directly. It is called by reset() and
+at the end of processing.
 
 =cut
 

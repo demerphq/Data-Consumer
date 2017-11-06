@@ -325,7 +325,7 @@ sub release {
 
     my $id= delete $self->{last_id};
 
-    return 0 unless $self->{release_acquire_sql};
+    return 0 unless defined $id && $self->{release_acquire_sql};
 
     my $dbh= $self->{dbh};
 
